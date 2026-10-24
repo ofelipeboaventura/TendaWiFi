@@ -1,5 +1,11 @@
 # Validação da versão 0.1.2
 
+## Atualização 0.1.3
+
+A atualização ativa passou a buscar uma rodada por segundo, descontando o tempo gasto nas consultas. As consultas continuam sem sobreposição; atrasos do equipamento podem aumentar o intervalo efetivo. O cabeçalho não exibe botão, horário ou indicador de carregamento durante essas atualizações. A espera de 15 segundos em segundo plano ou após falha foi preservada. Os 97 testes, o build TypeScript/Vite e o teste desktop em demonstração passaram novamente nesta versão.
+
+## Base 0.1.2
+
 - **97 testes automatizados aprovados**: protocolo, criptografia, limites, sessão, cookies, validação de campos/listas, revisão, conflitos, ownership, resultados incertos, arquivos e login automático.
 - **TypeScript e build de produção aprovados**.
 - **Teste desktop em demonstração aprovado**: isolamento do renderer, leitura do catálogo, navegação das oito áreas, revisão/cancelamento, bloqueio de payload extra, ownership e logout. Nenhuma conexão real nesse teste; `TENDA_AUTO_LOGIN=false` é imposto pelo runner.

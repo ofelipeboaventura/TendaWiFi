@@ -4,7 +4,9 @@ Gerenciador local para **Tenda RX27 Pro V1.0 / V16.03.28.20_multi**, com interfa
 
 ## Usar no Windows
 
-Abra o executável portátil em `release`, informe o IP local do roteador e a senha de administração. O programa não precisa de Node instalado nem de privilégios administrativos. **Explorar demonstração** abre um simulador inteiramente local, identificado em todas as telas.
+Abra o executável portátil mais recente indicado em `docs/release.json`, informe o IP local do roteador e a senha de administração. O programa não precisa de Node instalado nem de privilégios administrativos. **Explorar demonstração** abre um simulador inteiramente local, identificado em todas as telas.
+
+A atualização das telas ativas busca uma rodada por segundo, descontando o tempo das consultas. Consultas não se sobrepõem; se o equipamento levar mais de um segundo, a próxima rodada aguarda a conclusão. Com a tela em segundo plano ou após uma falha, a espera é de 15 segundos.
 
 O programa consulta o equipamento somente após o login. Nenhuma configuração é aplicada automaticamente: alterações exigem uma revisão com confirmação; restauração e reset exigem digitar `CONFIRMAR`. A sessão e os tokens ficam em memória. Encerrar o aplicativo remove a sessão local, mas a expiração/revogação no equipamento depende do firmware.
 

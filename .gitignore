@@ -47,4 +47,5 @@ next-env.d.ts
 
 # Portable launcher next to the private local configuration
 /TendaWiFi.exe
+/TendaWiFi-*.exe
 /SHA256SUMS.txt
