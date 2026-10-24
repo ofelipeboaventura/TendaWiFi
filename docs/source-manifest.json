@@ -1,0 +1,258 @@
+{
+  "source": "http://192.168.0.1",
+  "capturedAt": "2026-10-24T14:37:21.960Z",
+  "files": [
+    {
+      "name": "index.js",
+      "route": "/js/index.js?428a68b2",
+      "bytes": 20912,
+      "sha256": "ea7635073d42176ec9067367a556d2c9aa4cda0fd2c34396277efc5c62c0af7b"
+    },
+    {
+      "name": "login.js",
+      "route": "/js/login.js?428a68b2",
+      "bytes": 8254,
+      "sha256": "e170a61fa389c4fa615a93f0ec51e0386823c4088880a1d509174f5d7d305514"
+    },
+    {
+      "name": "chunk-common.js",
+      "route": "/js/chunk-common.js?a62e8499",
+      "bytes": 103850,
+      "sha256": "006dde9f1c8a33f34d9ba417aeb9471f588263ed4fc06e9b0276275aceeba77f"
+    },
+    {
+      "name": "chunk-crypto-js.js",
+      "route": "/js/chunk-crypto-js.js?f36f7f09",
+      "bytes": 16264,
+      "sha256": "6e42e8db15e800c9de623e15eb925107b84baa547e9ee9968046783828bdf701"
+    },
+    {
+      "name": "chunk-vendors.js",
+      "route": "/js/chunk-vendors.js?b2cc8afb",
+      "bytes": 541333,
+      "sha256": "72e28021afe4749b5857a132cf6abb988f019e7af1e928eb1a9c0d9174776779"
+    },
+    {
+      "name": "macro_config.js",
+      "route": "/js/macro_config.js?random=1777443870310",
+      "bytes": 2484,
+      "sha256": "c1b222e834bc47e7b35ce3613d750bb6ff2a15b83c3b459c1c4c5d9c8b7bef01"
+    },
+    {
+      "name": "advance.js",
+      "route": "/js/advance.js?bb18a2b2",
+      "bytes": 2998,
+      "sha256": "fd034e4afcc592cbe0dd079a4d02fabba95f068951570a10722d821e227d362c"
+    },
+    {
+      "name": "advDdns.js",
+      "route": "/js/advDdns.js?8a3b4566",
+      "bytes": 4028,
+      "sha256": "653cefdc7360ceceb3b1401a66e4a9fbf92d02166499cab879f2920bb2274970"
+    },
+    {
+      "name": "advDmz.js",
+      "route": "/js/advDmz.js?1fa79f36",
+      "bytes": 6701,
+      "sha256": "2b6698aaddc42824bc1b514edb95a590834c8d04cb65f42ae2da9e8a8392ac16"
+    },
+    {
+      "name": "advPortMap.js",
+      "route": "/js/advPortMap.js?eae4baa1",
+      "bytes": 7466,
+      "sha256": "95e86920f18347244c26018886f9441a9e22079df2cb28a33476cbb24207eb02"
+    },
+    {
+      "name": "advStaticRoute.js",
+      "route": "/js/advStaticRoute.js?4a738c9c",
+      "bytes": 5487,
+      "sha256": "bcc15599453b6869de4167ae36de04a9dba3f9ce1554677efc52e09812796d74"
+    },
+    {
+      "name": "advUpnp.js",
+      "route": "/js/advUpnp.js?19338d44",
+      "bytes": 2331,
+      "sha256": "2909f56b78de8efa15cab0607dc84c9537e854d9b4812f57a71510804004923f"
+    },
+    {
+      "name": "app.js",
+      "route": "/js/app.js?2d63242c",
+      "bytes": 5277,
+      "sha256": "ac0966934571b30e03fd39803a2d05dadf12354e6f8d8661af5426923f7e37f4"
+    },
+    {
+      "name": "devices.js",
+      "route": "/js/devices.js?c2fb5c90",
+      "bytes": 3547,
+      "sha256": "5e6ba9c737a171805644f09e7ad527de8199ced033ee9a1338cb07b115f55c91"
+    },
+    {
+      "name": "firewall.js",
+      "route": "/js/firewall.js?24fa2ed8",
+      "bytes": 2117,
+      "sha256": "3033737fdffe510de5f14947249fac2a45f58979a541af9ad424230ceedc7b9d"
+    },
+    {
+      "name": "iptv.js",
+      "route": "/js/iptv.js?344ec6e1",
+      "bytes": 4100,
+      "sha256": "7e2a7b72512aa7daaebcfcf38f05f0adc68b7f42c4667dfaa9eab796cee92df2"
+    },
+    {
+      "name": "ipv6.js",
+      "route": "/js/ipv6.js?0ff80d18",
+      "bytes": 6877,
+      "sha256": "37d56fb7392bcfe67867ce07afe7e0fd7a9644e675533386537b07adcdf433a7"
+    },
+    {
+      "name": "lan.js",
+      "route": "/js/lan.js?b4d2d6ad",
+      "bytes": 14314,
+      "sha256": "f34a3b624eeb7726ad625d885d2e5956330a2c719d51bc45e534fc241f97b273"
+    },
+    {
+      "name": "led.js",
+      "route": "/js/led.js?2b08e2a9",
+      "bytes": 2581,
+      "sha256": "1636ab966b6dc4c0bc52cff3046b721441cc4084c4b11ab5fa5f59349415bd46"
+    },
+    {
+      "name": "macfilter.js",
+      "route": "/js/macfilter.js?52e01922",
+      "bytes": 8045,
+      "sha256": "c2b91d151a2510dffee1d42b1f5385dfe72589f89f24211d2fc6525bfdd2edf1"
+    },
+    {
+      "name": "parent-controls.js",
+      "route": "/js/parent-controls.js?4bf46597",
+      "bytes": 20550,
+      "sha256": "fcfcf3d306b361ec75a2bc437078a6fa5f1c1ca5e015764649f78562b466b5fa"
+    },
+    {
+      "name": "status.js",
+      "route": "/js/status.js?6cb8b6f8",
+      "bytes": 48785,
+      "sha256": "2a0b0550e7a43599dc35da3121c60d74aeda699b543091d07da499d24af5f724"
+    },
+    {
+      "name": "systemBackup.js",
+      "route": "/js/systemBackup.js?c335da4e",
+      "bytes": 8423,
+      "sha256": "b58e3aa4411f4af4c576ef22886c43e00c1f709c1e6ac03681fe117a2908e257"
+    },
+    {
+      "name": "systemLog.js",
+      "route": "/js/systemLog.js?c7cf0a36",
+      "bytes": 2710,
+      "sha256": "c7e2da1ec8cc6ece6e71f5bfe180febae137b5b6ed885146dfcc73331b95c202"
+    },
+    {
+      "name": "systemMaintenance.js",
+      "route": "/js/systemMaintenance.js?ef5c8df8",
+      "bytes": 2648,
+      "sha256": "849b355cf618597570dace48a987aeefd1734c72d176a74c266c21d2402eb678"
+    },
+    {
+      "name": "systemPwd.js",
+      "route": "/js/systemPwd.js?4520025e",
+      "bytes": 2617,
+      "sha256": "e0c95a3bc6de45cee0968536f99a19a0c35805f54818033214b481fa9525b1c3"
+    },
+    {
+      "name": "systemStatus.js",
+      "route": "/js/systemStatus.js?accc2b89",
+      "bytes": 7333,
+      "sha256": "94bc82a400418b1800e0da39f00ff467415ddbcd647842a3ce5ebfd831fbf8ea"
+    },
+    {
+      "name": "systemTime.js",
+      "route": "/js/systemTime.js?e5de9e12",
+      "bytes": 6737,
+      "sha256": "02b78f7b7107d8a015bbb513a9f6974f679076d7f444593aa1ef439be125abe1"
+    },
+    {
+      "name": "systemUpgrade.js",
+      "route": "/js/systemUpgrade.js?10db8153",
+      "bytes": 12660,
+      "sha256": "ff6e2bc47d1313a8f35bcaf19fadde0480757c1ce9ea19929d36697d6c0429fa"
+    },
+    {
+      "name": "tr069.js",
+      "route": "/js/tr069.js?25445a0b",
+      "bytes": 14284,
+      "sha256": "2979a4d35a7a8fbc6c0136bc5c08777193b78d8e2106ba2b4c091b3da4db79ec"
+    },
+    {
+      "name": "vpn.js",
+      "route": "/js/vpn.js?2787f6f8",
+      "bytes": 23497,
+      "sha256": "1f9f3895e0d4a3b20f463321133355c15b7bae296892527d96b944ddc4d90496"
+    },
+    {
+      "name": "wan.js",
+      "route": "/js/wan.js?bc053a2a",
+      "bytes": 9138,
+      "sha256": "87609a7f359715830f0fbc56df23931e4a39fff83c48f84bcf302a58407d85e8"
+    },
+    {
+      "name": "wanAdvance.js",
+      "route": "/js/wanAdvance.js?30a85a42",
+      "bytes": 2038,
+      "sha256": "574b74ea6ed09d89715aeb57604532941cb26b803ec5e7f9fe7372f494a3cf70"
+    },
+    {
+      "name": "wifi.js",
+      "route": "/js/wifi.js?6539c2a0",
+      "bytes": 10879,
+      "sha256": "7ce05e3e47b1a457684cfa614bb5b519b09a1e54eba3d6b6868a0793a3fd6f38"
+    },
+    {
+      "name": "wifiAdvance.js",
+      "route": "/js/wifiAdvance.js?1658daba",
+      "bytes": 12577,
+      "sha256": "d0fa94515f92693e3b0d2f8830775dea8baabf6cfa6e931030e4d3568f9683da"
+    },
+    {
+      "name": "wifiGuest.js",
+      "route": "/js/wifiGuest.js?dea0cefe",
+      "bytes": 5225,
+      "sha256": "188ac1fbc60756f6f7ba851d4e3de9cd6f6c1874ece95534c799403dbad230a8"
+    },
+    {
+      "name": "workMode.js",
+      "route": "/js/workMode.js?e29b4953",
+      "bytes": 17763,
+      "sha256": "c69a7a2bd034e5d032d967a02a3064e461a68d5b2dd54dea82f9df7acd59a759"
+    },
+    {
+      "name": "network-diagnosis.js",
+      "route": "/js/network-diagnosis.js?9b936efe",
+      "bytes": 11884,
+      "sha256": "e931b1da0e1698aa99dba34a26bb661245bc22ba93bd2b5db31cfabe6ff839e1"
+    },
+    {
+      "name": "secondMenu.js",
+      "route": "/js/secondMenu.js?6acbad25",
+      "bytes": 250,
+      "sha256": "ff85d3f4a99e1d4ddff1370fb96b77cb51c1d6ed8e8cf3a681ac4b6b6bbd890a"
+    },
+    {
+      "name": "wifiMesh.js",
+      "route": "/js/wifiMesh.js?085a83ed",
+      "bytes": 2152,
+      "sha256": "951446fe8470861ebb624631903c90c24ef49172276d63bac35254cc737e1045"
+    },
+    {
+      "name": "wifiWps.js",
+      "route": "/js/wifiWps.js?9f1f686a",
+      "bytes": 4197,
+      "sha256": "a729f5d038bd17ccc291d3a099e41a593243e23d93a0d5d579459c63cebfeccc"
+    },
+    {
+      "name": "child-list.js",
+      "route": "/js/child-list.js?63c256a5",
+      "bytes": 2829,
+      "sha256": "87ec39aee3af2884f80772cacc68498b7050a26aa06428c2c19021559368b6a6"
+    }
+  ]
+}

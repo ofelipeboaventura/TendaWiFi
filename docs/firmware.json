@@ -1,0 +1,19 @@
+{
+  "filename": "US_RX27_PROV1.0br_V16.03.28.20_multi_9569_TDE01.bin",
+  "bytes": 26446708,
+  "sha256": "0121bd96ee3f590f9f4a21a2b60220028f7f94f460f6579382dd15e22737dd62",
+  "headerBigEndian": 26446704,
+  "payloadBytes": 26446704,
+  "prefixEqualsPayload": true,
+  "payloadAligned16": true,
+  "entropyBitsPerByte": 7.999992563534376,
+  "signatures": {
+    "uImage": [],
+    "squashfs": [],
+    "gzip": [],
+    "xz": [],
+    "ubi": [],
+    "ELF": [],
+    "zip": []
+  }
+}

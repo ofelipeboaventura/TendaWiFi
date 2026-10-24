@@ -34,3 +34,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local firmware and research evidence
+/research/vendor/
+*.bin
+/out/
+/dist/
+/release/
+/artifacts/
+*.har
+*.saz
+
+# Portable launcher next to the private local configuration
+/TendaWiFi.exe
+/SHA256SUMS.txt
