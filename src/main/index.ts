@@ -16,6 +16,9 @@ import { exportHistory } from './monitoring/export';
 protocol.registerSchemesAsPrivileged([{ scheme: 'tenda', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false } }]);
 const autoLoginEnvironment: NodeJS.ProcessEnv = {}; for (const key of ['TENDA_AUTO_LOGIN', 'TENDA_ROUTER_HOST', 'TENDA_ROUTER_PASSWORD']) if (process.env[key] !== undefined) autoLoginEnvironment[key] = process.env[key];
 delete process.env.TENDA_ROUTER_PASSWORD;
+// Main-process kill switch, also used by read-only integration checks. Never supplied to a renderer.
+const resourceDiagnosticsAllowed = process.env.TENDA_RESOURCE_DIAGNOSTICS !== 'false';
+delete process.env.TENDA_RESOURCE_DIAGNOSTICS;
 app.enableSandbox();
 const devOrigin = !app.isPackaged && process.env.TENDA_DEV_URL === 'http://127.0.0.1:5173' ? process.env.TENDA_DEV_URL : undefined;
 const allowedOrigin = devOrigin ?? 'tenda://app';
@@ -100,7 +103,7 @@ async function bootstrap() {
   });
   service = new AppService(new FileVault(() => mainWindow));
   await mkdir(app.getPath('userData'), { recursive: true });
-  monitoring = new MonitoringCollector({ connected: () => service.connection().connected, demo: () => service.connection().demo, host: () => service.connection().host, read: (topology, resources) => service.readMonitoring(topology, resources) }, demo => new WorkerStore(demo ? ':memory:' : resolve(app.getPath('userData'), 'monitoring.sqlite')), new WindowsProbes(), event => { try { const title = 'Tenda WiFi — Monitoramento', content = event.message + (event.target ? ` (${event.target})` : ''); if (process.platform === 'win32' && tray && !tray.isDestroyed()) tray.displayBalloon({ title, content, iconType: event.severity === 'critical' ? 'error' : 'warning', respectQuietTime: true }); else if (Notification.isSupported()) new Notification({ title, body: content }).show(); } catch { /* OS notifications may be disabled. */ } });
+  monitoring = new MonitoringCollector({ connected: () => service.connection().connected, demo: () => service.connection().demo, host: () => service.connection().host, read: (topology, resources) => service.readMonitoring(topology, resources), diagnostics: enabled => service.setResourceDiagnostics(enabled && resourceDiagnosticsAllowed), suspendDiagnostics: () => service.suspendResourceDiagnostics() }, demo => new WorkerStore(demo ? ':memory:' : resolve(app.getPath('userData'), 'monitoring.sqlite')), new WindowsProbes(), event => { try { const title = 'Tenda WiFi — Monitoramento', content = event.message + (event.target ? ` (${event.target})` : ''); if (process.platform === 'win32' && tray && !tray.isDestroyed()) tray.displayBalloon({ title, content, iconType: event.severity === 'critical' ? 'error' : 'warning', respectQuietTime: true }); else if (Notification.isSupported()) new Notification({ title, body: content }).show(); } catch { /* OS notifications may be disabled. */ } });
   monitoring.onUpdate(state => { if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) { const url = mainWindow.webContents.getURL(); if (url.startsWith(allowedOrigin + '/')) mainWindow.webContents.send('tenda:monitoring-update', state); } updateTray(); });
   createTray();
   powerMonitor.on('suspend', () => monitoring.suspend()); powerMonitor.on('resume', () => monitoring.resume());

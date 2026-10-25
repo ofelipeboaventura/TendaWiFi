@@ -4,6 +4,7 @@ import type { ActionRequest, ApplyResult, AuditEntry, ChangePreview, ClientChang
 import { RouterClient, normalizeOverview, normalizeClients, normalizeMesh } from './router';
 import type { MonitorReading, ResourceReading } from '../shared/monitoring';
 import { deduplicateClients } from './monitoring/metrics';
+import { ResourceDiagnostics } from './monitoring/diagnostics';
 import { DemoRouter } from './demo';
 import { FeatureService } from './features';
 import { AppError } from './errors';
@@ -36,6 +37,7 @@ interface Pending { preview: ChangePreview; session: number; action?: ActionRequ
 const ACTION_TITLES: Record<ActionRequest['action'], string> = { reboot: 'Reiniciar roteador', reset: 'Restaurar configurações de fábrica', meshOptimize: 'Otimizar rede Mesh', meshScan: 'Procurar novos nós', meshAdd: 'Adicionar nó Mesh', checkFirmware: 'Verificar atualização', upgradeOnline: 'Atualizar firmware online', restore: 'Restaurar backup', firmware: 'Instalar firmware local', changePassword: 'Alterar senha de administração', clearLogs: 'Limpar registros' };
 
 export class AppService {
+  private diagnostics: ResourceDiagnostics;
   private telemetryRaw: Record<string, unknown> = {};
   private telemetryResources: ResourceReading[] = [];
   private telemetryMetadataAt = 0;
@@ -49,10 +51,22 @@ export class AppService {
   private entries: AuditEntry[] = [];
   private serial: Promise<unknown> = Promise.resolve();
   private logins = new Map<string, number[]>();
-  constructor(private files: FileStore, private makeRouter: () => ManagedRouter = () => new RouterClient(), initialRouter?: ManagedRouter) { this.router = initialRouter ?? makeRouter(); this.featuresService = new FeatureService(this.router); }
+  constructor(private files: FileStore, private makeRouter: () => ManagedRouter = () => new RouterClient(), initialRouter?: ManagedRouter) {
+    this.router = initialRouter ?? makeRouter(); this.featuresService = new FeatureService(this.router);
+    this.diagnostics = new ResourceDiagnostics({ read: () => this.readCurrent(async router => (await router.readModules(['syschkInfo'])).syschkInfo), write: action => this.readCurrent(async router => { this.requireWritable(); await router.writeModules({ syschkInfo: { operation_name: 'check', operation_action: action } }); }) });
+  }
+  setResourceDiagnostics(enabled: boolean) { return this.exclusive(async () => {
+    const primary = this.connection().demo ? { id: 'DEMO-RX27', online: true } : normalizeMesh(this.telemetryRaw).find(n => n.primary);
+    if (enabled) {
+      try { this.requireWritable(); if (!primary?.online) throw new AppError('UNSUPPORTED', 'Roteador principal indisponível.'); }
+      catch { this.diagnostics.unavailable(); return; }
+    }
+    await this.diagnostics.configure(enabled, primary?.id ?? '');
+  }); }
+  suspendResourceDiagnostics() { this.diagnostics.invalidate(); }
   private audit(action: string, outcome: string) { this.entries.push({ time: new Date().toISOString(), action, outcome }); if (this.entries.length > 500) this.entries.shift(); }
   private exclusive<T>(fn: () => Promise<T>): Promise<T> { const next = this.serial.then(fn, fn); this.serial = next.then(() => undefined, () => undefined); return next; }
-  private invalidate() { this.session++; this.telemetryRaw = {}; this.telemetryResources = []; this.telemetryMetadataAt = 0; this.demoEpoch = Date.now(); this.scannedAt = 0; this.uncertain = false; this.pending.clear(); this.files.clear(); this.featuresService.clear(); this.featuresService = new FeatureService(this.router); }
+  private invalidate() { this.diagnostics.invalidate(true); this.session++; this.telemetryRaw = {}; this.telemetryResources = []; this.telemetryMetadataAt = 0; this.demoEpoch = Date.now(); this.scannedAt = 0; this.uncertain = false; this.pending.clear(); this.files.clear(); this.featuresService.clear(); this.featuresService = new FeatureService(this.router); }
   private requireConnection() { if (!this.router.getConnection().connected) throw new AppError('AUTH', 'Conecte-se ao roteador para continuar.'); }
   private requireWritable() { this.requireConnection(); if (this.uncertain) throw new AppError('UNCERTAIN', 'Uma operação anterior ainda precisa ser verificada. Atualize a visão geral ou entre novamente antes de revisar outra alteração.'); const s = this.router.getConnection(); if (!s.demo && (!/RX27[_\s-]*PRO/i.test(s.model) || !/^V?16\.03\.28\.20(?:_|\(|$)/i.test(s.firmware))) throw new AppError('UNSUPPORTED', 'Esta versão do equipamento ainda não foi validada para alterações. As consultas permanecem disponíveis.'); }
   connection() { return this.router.getConnection(); }
@@ -75,7 +89,7 @@ export class AppService {
       const connection = router.getConnection();
       if (connection.demo) {
         const overview = await router.overview(), clients = deduplicateClients(await router.clients()), nodes = await router.mesh(), at = Date.now(), seconds = Math.floor((at - this.demoEpoch) / 1000);
-        return { overview, clients, nodes, routerId: 'demo', resources: [{ nodeId: nodes[0]?.id ?? 'demo', cpu: 24 + Math.sin(seconds / 12) * 9, memory: 53 + Math.sin(seconds / 30) * 3, source: 'diagnostic', sampledAt: at, current: true }], counters: [{ id: 'wan', scope: 'internet', epoch: String(this.demoEpoch), upload: (BigInt(seconds) * 1200000n).toString(), download: (BigInt(seconds) * 9000000n).toString() }, ...clients.filter(d => d.online).map((d, i) => ({ id: d.mac, scope: 'device' as const, epoch: String(this.demoEpoch), upload: (BigInt(seconds) * BigInt((i + 1) * 2000)).toString(), download: (BigInt(seconds) * BigInt((i + 1) * 30000)).toString() }))] };
+        return { overview, clients, nodes, routerId: 'demo', resources: this.diagnostics.reading(), diagnostic: this.diagnostics.snapshot(), resourceSample: this.diagnostics.latestSample(), counters: [{ id: 'wan', scope: 'internet', epoch: String(this.demoEpoch), upload: (BigInt(seconds) * 1200000n).toString(), download: (BigInt(seconds) * 9000000n).toString() }, ...clients.filter(d => d.online).map((d, i) => ({ id: d.mac, scope: 'device' as const, epoch: String(this.demoEpoch), upload: (BigInt(seconds) * BigInt((i + 1) * 2000)).toString(), download: (BigInt(seconds) * BigInt((i + 1) * 30000)).toString() }))] };
       }
       const metadata = topology || !this.telemetryMetadataAt;
       const data = await router.readModules(['wanStatus', 'deviceList', 'systemCfg', ...(metadata ? ['meshTopo', 'wifiBasicCfg', 'apModeStatus', 'workMode', 'localhost', 'macFilter', 'deviceVersionList'] : [])]);
@@ -86,17 +100,16 @@ export class AppService {
       const raw = { ...this.telemetryRaw, ...data }; const overview = normalizeOverview(raw, connection), clients = deduplicateClients(normalizeClients(raw));
       const validRate = (value: number) => Number.isFinite(value) && value >= 0 && value <= 1e12;
       if (![overview.upload, overview.download, ...clients.flatMap(d => [d.upload, d.download])].every(validRate)) throw new AppError('ROUTER', 'O roteador retornou velocidades inválidas.');
-      if (resources) {
+      if (resources && !['running', 'uncertain'].includes(this.diagnostics.snapshot().status)) {
         try {
-          // Existing results only. Never request CLEAR_MODULE, initialize, start or optimize diagnostics.
-          const diagnostic = await router.readModules(['syschkInfo']); if (telemetrySession !== this.session) throw new AppError('AUTH', 'A sessão mudou durante a coleta.'); const result = object(diagnostic.syschkInfo), rows = Array.isArray(result.data) ? result.data : [];
-          const details = object(object(rows.find(r => object(r).item_name === 'run_status')).details);
-          const percent = (value: unknown): number | null => { if (typeof value !== 'number' && typeof value !== 'string') return null; if (typeof value === 'string' && !/^\d{1,3}(?:\.\d{1,3})?%?$/.test(value)) return null; const n = Number(String(value).replace('%', '')); return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null; };
-          this.telemetryResources = [{ nodeId: normalizeMesh(raw).find(n => n.primary)?.id ?? '', cpu: percent(details.cpu_rate), memory: percent(details.mem_rate), source: 'diagnostic', sampledAt: null, current: false }];
+          const diagnostic = await router.readModules(['syschkInfo']);
+          if (telemetrySession !== this.session) throw new AppError('AUTH', 'A sessão mudou durante a coleta.');
+          this.diagnostics.passive(diagnostic.syschkInfo, overview.nodes.find(n => n.primary)?.id ?? '');
         } catch (error) { if (error instanceof Error && 'code' in error && error.code === 'AUTH') throw error; }
       }
+      this.telemetryResources = this.diagnostics.reading();
       this.telemetryRaw = raw; if (metadata) this.telemetryMetadataAt = Date.now();
-      return { overview, clients, nodes: overview.nodes, resources: this.telemetryResources, counters: [], routerId: hash({ primary: overview.nodes.find(n => n.primary)?.id ?? connection.host, model: connection.model, hardware: connection.hardware }) };
+      return { overview, clients, nodes: overview.nodes, resources: this.telemetryResources, diagnostic: this.diagnostics.snapshot(), resourceSample: this.diagnostics.latestSample(), counters: [], routerId: hash({ primary: overview.nodes.find(n => n.primary)?.id ?? connection.host, model: connection.model, hardware: connection.hardware }) };
     });
   }
   definitions() { this.requireConnection(); return this.featuresService.definitions(); }
@@ -127,14 +140,14 @@ export class AppService {
     this.requireWritable(); const session = this.session, router = this.router; const action = actionSchema.parse(input) as ActionRequest;
     if (action.action === 'clearLogs') throw new AppError('UNSUPPORTED', 'O painel deste firmware permite consultar e exportar registros, mas não documenta uma operação de limpeza.');
     if (action.action === 'changePassword' && (action.newPassword !== action.confirmPassword || action.oldPassword === action.newPassword)) throw new AppError('VALIDATION', 'Confirme uma nova senha diferente da senha atual.');
-    const nodes = await router.mesh(); const chosen = action.nodeId ? nodes.find(n => n.id === action.nodeId) : nodes.find(n => n.primary);
-    if (action.nodeId && !chosen) throw new AppError('FORBIDDEN', 'O nó selecionado não pertence à rede autenticada.');
+    const nodes = await router.mesh(); const targetId = 'nodeId' in action ? action.nodeId : undefined; const chosen = targetId ? nodes.find(n => n.id === targetId) : nodes.find(n => n.primary);
+    if (targetId && !chosen) throw new AppError('FORBIDDEN', 'O nó selecionado não pertence à rede autenticada.');
     if (['reboot', 'reset', 'firmware'].includes(action.action) && (!chosen || !chosen.online)) throw new AppError('FORBIDDEN', 'Selecione um roteador online desta rede.');
     if (action.action === 'firmware' && !chosen?.primary) throw new AppError('UNSUPPORTED', 'O arquivo local verificado é exclusivo do RX27 Pro principal. Para os outros nós, utilize a atualização online.');
     if (action.action === 'upgradeOnline') await this.requireAvailableUpgrade(action.nodeId, router);
-    const summary: string[] = [!action.nodeId && ['checkFirmware', 'upgradeOnline'].includes(action.action) ? 'Destino: todos os nós da rede' : chosen && ['reboot', 'reset', 'firmware', 'checkFirmware', 'upgradeOnline'].includes(action.action) ? `Destino: ${chosen.name}` : 'Destino: rede atual'];
-    if (action.nodeSerial) summary.push(`Número de série: ${action.nodeSerial}`);
-    if (action.fileId) { const file = this.files.get(action.fileId); const expected = action.action === 'firmware' ? 'firmware' : 'configuration'; if (file.info.kind !== expected) throw new AppError('VALIDATION', 'O tipo do arquivo não corresponde à operação.'); summary.push(`Arquivo: ${file.info.name}`, `Tamanho: ${file.info.size.toLocaleString('pt-BR')} bytes`, `SHA-256: ${file.info.sha256}`); }
+    const summary: string[] = [!targetId && ['checkFirmware', 'upgradeOnline'].includes(action.action) ? 'Destino: todos os nós da rede' : chosen && ['reboot', 'reset', 'firmware', 'checkFirmware', 'upgradeOnline'].includes(action.action) ? `Destino: ${chosen.name}` : 'Destino: rede atual'];
+    if ('nodeSerial' in action) summary.push(`Número de série: ${action.nodeSerial}`);
+    if ('fileId' in action) { const file = this.files.get(action.fileId); const expected = action.action === 'firmware' ? 'firmware' : 'configuration'; if (file.info.kind !== expected) throw new AppError('VALIDATION', 'O tipo do arquivo não corresponde à operação.'); summary.push(`Arquivo: ${file.info.name}`, `Tamanho: ${file.info.size.toLocaleString('pt-BR')} bytes`, `SHA-256: ${file.info.sha256}`); }
     if (action.action === 'changePassword') summary.push('A senha será substituída e será necessário entrar novamente.');
     const destructive = ['reset', 'restore'].includes(action.action); const disconnect = ['reboot', 'firmware', 'upgradeOnline', 'meshOptimize'].includes(action.action);
     const warning = destructive ? 'As configurações atuais serão substituídas. A conexão poderá ser perdida. Faça um backup antes de continuar.' : disconnect ? 'A rede poderá ficar indisponível durante a operação. Não desligue os roteadores durante atualizações.' : action.action === 'meshAdd' ? 'O novo nó passará a integrar sua rede. Confira o número de série do equipamento.' : undefined;
@@ -142,6 +155,9 @@ export class AppService {
   }
   applyChange(input: { id: string }): Promise<ApplyResult> { return this.exclusive(async () => {
     this.requireWritable();
+    if (input.id.startsWith('feature:')) this.featuresService.assertPending(input.id);
+    else { const pending = this.pending.get(input.id); if (!pending || pending.session !== this.session || Date.parse(pending.preview.expiresAt) < Date.now()) throw new AppError('CONFLICT', 'A revisao expirou ou ja foi usada.'); }
+    const releaseDiagnostic = await this.diagnostics.maintenance();
     const actionName = input.id.startsWith('feature:') ? 'Configuração' : 'Manutenção';
     try {
       if (input.id.startsWith('feature:')) { const result = await this.featuresService.apply(input.id); this.audit(actionName, 'Aplicada'); if (result.reconnect) { await this.router.disconnect(); this.invalidate(); } return result; }
@@ -157,7 +173,7 @@ export class AppService {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'UNCERTAIN') { this.uncertain = true; this.pending.clear(); }
       this.audit(actionName, error && typeof error === 'object' && 'code' in error && error.code === 'UNCERTAIN' ? 'Resultado pendente de verificação; não repetir automaticamente' : 'Não concluída');
       throw error;
-    }
+    } finally { releaseDiagnostic(); }
   }); }
   private async applyClient(pending: Pending): Promise<ApplyResult> {
     const change = pending.client!; const current = (await this.router.clients()).find(c => c.mac.toUpperCase() === change.mac && c.nodeId === change.nodeId);
@@ -189,8 +205,8 @@ export class AppService {
     return { message: 'Dispositivo atualizado e estado confirmado.', reconnect: false };
   }
   private async applyAction(action: ActionRequest): Promise<ApplyResult> {
-    const nodes = await this.router.mesh(); const node = action.nodeId ? nodes.find(n => n.id === action.nodeId) : nodes.find(n => n.primary);
-    if (action.nodeId && !node) throw new AppError('FORBIDDEN', 'O nó não pertence mais à rede atual.');
+    const nodes = await this.router.mesh(); const targetId = 'nodeId' in action ? action.nodeId : undefined; const node = targetId ? nodes.find(n => n.id === targetId) : nodes.find(n => n.primary);
+    if (targetId && !node) throw new AppError('FORBIDDEN', 'O nó não pertence mais à rede atual.');
     if (['reboot', 'reset', 'firmware'].includes(action.action) && !node?.online) throw new AppError('CONFLICT', 'O nó não está mais online. Revise a operação.');
     switch (action.action) {
       case 'reboot': await this.router.writeModules({ systemReboot: node!.primary ? { action: 'reboot' } : { action: 'reboot', sn: node!.id, ip: node!.ip, mac: await this.nodeMac(node!.id) } }); return { message: 'Reinicialização solicitada. Aguarde o roteador voltar à rede.', reconnect: node!.primary };

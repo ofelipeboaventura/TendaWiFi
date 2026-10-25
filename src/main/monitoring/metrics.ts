@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { defaultMonitorSettings, monitoringPeriods, type CounterDelta, type MonitorEvent, type MonitorSettings, type ProbeSample, type QualityMetric, type RealCounter } from '../../shared/monitoring';
 import type { ClientDevice } from '../../shared/types';
 
-export const settingsSchema = z.strictObject({ downloadMbps: z.number().min(.1).max(100000).nullable(), uploadMbps: z.number().min(.1).max(100000).nullable(), alerts: z.boolean(), muted: z.boolean(), latencyMs: z.number().min(1).max(10000), lossPercent: z.number().min(.1).max(100), cpuPercent: z.number().min(1).max(100), memoryPercent: z.number().min(1).max(100), saturationPercent: z.number().min(1).max(100) });
+export const settingsSchema = z.strictObject({ resourceDiagnosticsEnabled: z.boolean().default(true), downloadMbps: z.number().min(.1).max(100000).nullable(), uploadMbps: z.number().min(.1).max(100000).nullable(), alerts: z.boolean(), muted: z.boolean(), latencyMs: z.number().min(1).max(10000), lossPercent: z.number().min(.1).max(100), cpuPercent: z.number().min(1).max(100), memoryPercent: z.number().min(1).max(100), saturationPercent: z.number().min(1).max(100) });
 export const querySchema = z.strictObject({ period: z.enum(monitoringPeriods), deviceMac: z.string().regex(/^(?:[A-F0-9]{2}:){5}[A-F0-9]{2}$/).optional() });
-export const exportSchema = querySchema.extend({ kind: z.enum(['traffic', 'devices', 'events', 'quality']) });
+export const exportSchema = querySchema.extend({ kind: z.enum(['traffic', 'devices', 'events', 'quality', 'resources']) });
 export const pauseSchema = z.strictObject({ paused: z.boolean() });
 export const periodMs = { '5m': 300000, '15m': 900000, '1h': 3600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
 const uint64 = z.string().refine(s => /^(?:0|[1-9]\d{0,19})$/.test(s) && BigInt(s) <= 18446744073709551615n);

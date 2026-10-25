@@ -1,5 +1,7 @@
 # Gráficos e fluidez — 0.2.1
 
+Na versão 0.2.2, CPU/memória usam os registros individuais do diagnóstico como pontos, sem copiar valores nas amostras WAN ou ligar os intervalos sem medição. A alternativa SVG também desenha esses pontos. Em nova medição sintética de 900 amostras nesta máquina, o desenho p95 foi **0,3 ms**, aproximadamente **55,2 desenhos/s**, sem tarefas recorrentes acima de 50 ms; o objetivo de 60 desenhos/s permanece um alvo, não uma garantia do equipamento.
+
 Os gráficos usam Canvas 2D em três camadas: grade, séries e interação. O desenho tem cadência-alvo limitada a 60 FPS; a coleta continua em 1 segundo para tráfego e 5 segundos para ICMP. A janela de tempo mantém o período escolhido, inclusive na coleta inicial. Não são geradas novas medições para preencher os frames.
 
 O eixo Y expande para acomodar picos e só reduz após dez segundos de necessidade menor. As linhas seguem amostras reais; tooltip e teclado apontam para horários/valores medidos. Redução por resolução preserva extremos e interrupções, sem converter pontos em médias artificiais. A resolução física do Canvas é limitada a DPR 2.

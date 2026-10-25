@@ -19,7 +19,21 @@ export interface SelectedFile { id: string; name: string; size: number; sha256: 
 export interface AuditEntry { time: string; action: string; outcome: string }
 export interface MaintenanceStatus { firmware: { nodeId: string; name: string; current: string; latest: string; available: boolean; status: string }[]; discovered: { serial: string; name: string }[] }
 export type MaintenanceAction = 'reboot' | 'reset' | 'meshOptimize' | 'meshScan' | 'meshAdd' | 'checkFirmware' | 'upgradeOnline' | 'restore' | 'firmware' | 'changePassword' | 'clearLogs';
-export interface ActionRequest { action: MaintenanceAction; nodeId?: string; fileId?: string; nodeSerial?: string; oldPassword?: string; newPassword?: string; confirmPassword?: string }
+export type ActionRequest =
+  | { action: 'reboot' | 'reset' | 'checkFirmware' | 'upgradeOnline'; nodeId?: string }
+  | { action: 'firmware'; fileId: string; nodeId?: string }
+  | { action: 'meshOptimize' | 'meshScan' | 'clearLogs' }
+  | { action: 'meshAdd'; nodeSerial: string }
+  | { action: 'restore'; fileId: string }
+  | { action: 'changePassword'; oldPassword: string; newPassword: string; confirmPassword: string };
+/** Only these actions accept a selected mesh node. Global requests must have no extra fields. */
+export function withMaintenanceTarget(input: ActionRequest, selectedNodeId?: string): ActionRequest {
+  switch (input.action) {
+    case 'reboot': case 'reset': case 'checkFirmware': case 'upgradeOnline': case 'firmware':
+      return input.nodeId !== undefined || !selectedNodeId ? input : { ...input, nodeId: selectedNodeId };
+    default: return input;
+  }
+}
 export interface ClientChange { mac: string; nodeId: string; name?: string; blocked?: boolean; uploadLimit?: number; downloadLimit?: number }
 export interface DesktopAPI extends MonitoringCommands {
   connect(input: { host: string; password: string }): Promise<Result<ConnectionStatus>>;

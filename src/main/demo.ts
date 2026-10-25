@@ -11,7 +11,7 @@ const nodes: MeshNode[] = [
 ];
 const names = ['Computador', 'Smartphone', 'Smart TV', 'Notebook', 'Tablet', 'Console', 'Câmera', 'Caixa de som', 'Lâmpada', 'Relógio'];
 export class DemoRouter {
-  private active = true;
+  private active = true; private diagnosticStarted = 0;
   private start = Date.now();
   private data: Record<string, unknown>;
   private devices: ClientDevice[] = names.map((name, i) => ({ id: `02:00:00:00:50:${(i + 16).toString(16).toUpperCase()}`, mac: `02:00:00:00:50:${(i + 16).toString(16).toUpperCase()}`, name, ip: `192.168.50.${100 + i}`, nodeId: nodes[Math.min(Math.floor(i / 4), 2)].id, nodeName: nodes[Math.min(Math.floor(i / 4), 2)].name, online: i !== 8, guest: i === 7, blocked: i === 9, local: i === 0, connection: i === 0 ? 'Ethernet' : i % 2 ? '5 GHz' : '2.4 GHz', upload: (i + 1) * 2310, download: (i + 1) * 34000, uploadLimit: 0, downloadLimit: 0, uptime: 3200 + i * 100 }));
@@ -29,6 +29,7 @@ export class DemoRouter {
       deviceVersionList: nodes.map((n,i) => ({ sn: n.id, mac: `02:00:00:00:00:0${i+1}`, nodeName: n.name, nodeType: n.primary ? 'controller' : 'agent', ip: n.ip, nodeStatus: 'normal', versionInfo: { curSoftVersion: 'V16.03.28.20_multi', hasNewSoftVersion: false } })),
       systemLog: { systemLogList: [{ id: 1, time: new Date().toLocaleString('pt-BR'), type: 'Sistema', log: 'Ambiente de demonstração iniciado. Nenhuma conexão real foi realizada.' }] },
       scanNodeList: [],
+      syschkInfo: { check_type: '', progress_rate: 0, data: [] },
     };
     Object.assign(this.data.wifiBasicCfg as object, { wifiSSID: 'Casa conectada', wifiSSID_5g: 'Casa conectada 5G', wifiSSID_6g: 'Casa conectada 6G' });
     Object.assign(this.data.lanCfg as object, { lanIP: '192.168.50.1', startIP: '192.168.50.100', endIP: '192.168.50.200' });
@@ -44,7 +45,11 @@ export class DemoRouter {
   async readModules(modules: string[], _params?: Record<string, string>): Promise<Record<string, unknown>> {
     this.check(); const result: Record<string, unknown> = { errCode: 0 };
     for (const module of modules) {
-      if (module === 'deviceList' || module === 'deviceListNotNeedRate') result.deviceList = nodes.map(n => ({ sn: n.id, nodeName: n.name, onlineList: this.devices.filter(d => d.nodeId === n.id && d.online).map(d => this.wireDevice(d)), offlineList: this.devices.filter(d => d.nodeId === n.id && !d.online).map(d => this.wireDevice(d)) }));
+      if (module === 'syschkInfo' && this.diagnosticStarted) {
+        const done = Date.now() - this.diagnosticStarted >= 4000;
+        this.data.syschkInfo = {check_type:done?'checked':'checking',progress_rate:done?100:40,data:[{item_name:'run_status',item_status:done?'checked':'checking',result:done?'normal':'--',details:{cpu_rate:'24.5%',mem_rate:'53.2%'}}]};
+        result[module] = clone(this.data.syschkInfo);
+      } else if (module === 'deviceList' || module === 'deviceListNotNeedRate') result.deviceList = nodes.map(n => ({ sn: n.id, nodeName: n.name, onlineList: this.devices.filter(d => d.nodeId === n.id && d.online).map(d => this.wireDevice(d)), offlineList: this.devices.filter(d => d.nodeId === n.id && !d.online).map(d => this.wireDevice(d)) }));
       else if (module in this.data) result[module] = clone(this.data[module]);
       else throw new AppError('UNSUPPORTED', 'Este recurso não está disponível na demonstração.');
     }
@@ -54,7 +59,12 @@ export class DemoRouter {
   async writeModules(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
     this.check(); this.writes.push(...Object.keys(payload));
     for (const [module, value] of Object.entries(payload)) {
-      if (module === 'setDeviceInfo') {
+      if (module === 'syschkInfo') {
+        const request = value as { operation_name: string; operation_action: string };
+        if (request.operation_name !== 'check' || !['init','start','stop'].includes(request.operation_action)) throw new AppError('VALIDATION', 'Unsupported diagnostic command.');
+        this.diagnosticStarted = request.operation_action === 'start' ? Date.now() : 0;
+        this.data.syschkInfo = {check_type:request.operation_action==='start'?'checking':request.operation_action==='stop'?'checked':'',progress_rate:0,data:[]};
+      } else if (module === 'setDeviceInfo') {
         const v = value as Record<string, unknown>; const d = this.devices.find(d => d.mac === String(v.mac).toUpperCase());
         if (d) { if (typeof v.hostname === 'string') d.name = v.hostname; if (v.upLimit != null) d.uploadLimit = Number(v.upLimit); if (v.downLimit != null) d.downloadLimit = Number(v.downLimit); }
       } else if (module === 'deviceVersionList') {

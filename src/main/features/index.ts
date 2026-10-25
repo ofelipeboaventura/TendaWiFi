@@ -230,6 +230,7 @@ export class FeatureService {
     const summary:string[]=[];for(const key of changed){const field=spec.fields.find(f=>f.key===key),table=spec.tables?.find(t=>t.key===key);if(field)summary.push(field.secret?`${field.label}: nova senha informada.`:`${field.section?field.section+' · ':''}${field.label}: ${displayField(field,values[key])}.`);else if(table)summary.push(...tableSummary(table,rows(old[key]),rows(values[key])));}
     return {id,title:`Aplicar: ${spec.title}`,summary,risk:spec.risk,expiresAt:new Date(expires).toISOString(),warning:spec.risk==='disconnect'?'A conexão com a rede pode cair. Mantenha acesso por cabo e confirme o endereço para reconectar.':spec.risk==='security'?'Esta alteração modifica o acesso à rede ou sua proteção. Confira as regras antes de confirmar.':undefined};
   }
+  assertPending(id:string):void{const p=this.pending.get(id);if(!p||p.expires<this.now()||p.connection!==this.identity())fail('A revisao expirou ou ja foi utilizada.','CONFLICT');}
   async apply(id:string):Promise<ApplyResult>{
     if(typeof id!=='string'||!id.startsWith('feature:')||id.length>80)fail('Revisão inválida.');const pending=this.pending.get(id);this.pending.delete(id);if(!pending||pending.expires<this.now())fail('A revisão expirou ou já foi utilizada. Revise novamente.','CONFLICT');
     const work=async():Promise<ApplyResult>=>{

@@ -31,7 +31,9 @@ O hash conhecido do `.bin` impede substituir acidentalmente o arquivo analisado,
 
 Os logs do roteador podem ter conteúdo arbitrário que o aplicativo não consegue classificar perfeitamente. A auditoria do desktop não inclui tais payloads e não os exporta automaticamente. Backups opacos podem conter segredos e herdam os controles de acesso do diretório escolhido no Windows. Memória de processos, pagefile e uma máquina já comprometida estão fora das garantias de proteção oferecidas pelo aplicativo.
 
-Não há serviço HTTP local, banco de dados, service role, nuvem própria, autoatualização ou compartilhamento de diagnóstico. Recursos de nuvem, TR-069 e atualização do fornecedor são iniciados pelo roteador somente após configuração ou ação explícita do usuário.
+Não há serviço HTTP local, service role, nuvem própria, autoatualização ou compartilhamento de diagnóstico. O histórico usa SQLite local em worker, com consultas parametrizadas e perfil por roteador. Recursos de nuvem, TR-069 e atualização do fornecedor são iniciados pelo roteador somente após configuração ou ação explícita do usuário.
+
+O diagnóstico automático autorizado na 0.2.2 usa apenas operações fixas `check/init`, `check/start`, `check/stop`. O renderer pode habilitar/desabilitar a preferência; não fornece módulo, ação, destino nem intervalo arbitrário. Ciclos são limitados no backend, serializados com manutenção e invalidados na troca de sessão. Resultados antigos, incompletos ou sem transição comprovada não viram métricas novas. A otimização Mesh mantém revisão de uso único, validação estrita e confirmação explícita; selecionar um nó não acrescenta campos a ações globais. IDs de revisão inválidos não interrompem o diagnóstico.
 
 ## Validação
 

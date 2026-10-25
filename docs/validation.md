@@ -46,3 +46,13 @@ O login real identificou duas diferenças importantes em relação ao primeiro c
 Não foram feitos testes reais de escrita, reset, restauração, pareamento, mudança de senha ou atualização de firmware no equipamento de produção. Esses fluxos foram validados com respostas sintéticas e revisão estática; o carrier de upload desconhecido falha de forma segura. O firmware original continua com o SHA-256 documentado em [firmware.json](firmware.json) e não foi descriptografado.
 
 O executável é uma compilação pessoal sem assinatura digital de editor. Seu checksum está em `SHA256SUMS.txt`; a identidade da entrega está em [release.json](release.json).
+
+## Atualização 0.2.2
+
+201 testes automatizados passaram, incluindo manutenção global com seleção de nó, estados do diagnóstico, limites, cadência, expiração, pausa, suspensão, incerteza, migração 1→2 e persistência sem duplicação. O desktop com simulador passou 23 verificações: revisão da otimização com principal/secundário, uma amostra de recursos por ciclo, cinco tipos de CSV, Canvas, preferências, bandeja e validação IPC.
+
+Um diagnóstico real autorizado do RX27Pro / V16.03.28.20_multi concluiu com CPU 8,75% e memória 65,11%, iguais aos campos consumidos pelo painel original. A coleta WAN continuou durante o ciclo, com 56 rodadas observadas pelo harness. Não foi utilizado `CLEAR_MODULE` nem executada otimização. O primeiro teste identificou que `init` já coloca o estado em `checking`; sua inicialização incompleta foi encerrada antes do ciclo validado, sem interromper itens ativos. Essa particularidade ganhou teste de regressão. Evidência sanitizada: `artifacts/monitoring/diagnostic-result.json`.
+
+Medição de 900 amostras: desenho p95 0,3 ms, cerca de 55,2 desenhos/s e nenhuma tarefa recorrente acima de 50 ms. O tráfego mantém valores medidos e janela temporal contínua; recursos são medições pontuais.
+
+O ASAR final corresponde ao build atual, contém versão 0.2.2 e não inclui `.env`, firmware, pesquisa ou testes. Os fuses de segurança foram conferidos. O executável portátil final passou com PATH sem Node, conta sem privilégios administrativos, perfil isolado, seis amostras reais e `PRAGMA quick_check=ok`; o diagnóstico foi desativado nessa verificação somente de leitura. A primeira tentativa do portátil terminou antes da coleta; uma repetição com captura técnica e novo perfil concluiu sem mensagens de erro. Os processos próprios do teste foram encerrados.

@@ -8,7 +8,7 @@ Abra o executável portátil mais recente indicado em `docs/release.json`, infor
 
 A atualização silenciosa usa um coletor central com cadência-alvo de uma rodada por segundo, inclusive com a janela oculta. Consultas não se sobrepõem; falhas usam espera progressiva de 2/5/15 segundos. Fechar a janela mantém a coleta na bandeja; para encerrar, use **Sair** no menu da bandeja.
 
-**Monitoramento** oferece cinco abas, gráficos interativos, ranking por dispositivo, sondas ICMP, alertas do Windows, CSV e histórico local de 30 dias. A demonstração é inteiramente sintética. No firmware verificado, consumo acumulado e CPU/memória passivos não estavam disponíveis: esses valores aparecem como indisponíveis, sem estimativas. Consulte [métricas, segurança e limitações](docs/monitoring.md).
+**Monitoramento** oferece cinco abas, gráficos interativos, ranking por dispositivo, sondas ICMP, alertas do Windows, CSV e histórico local de 30 dias. A versão **0.2.2** corrige a otimização Mesh e coleta CPU/memória pelo diagnóstico do roteador a cada 5 minutos, com horário, idade e histórico de cada medição. Essa coleta pode ser desativada nas preferências. O consumo acumulado continua indisponível quando não existem contadores confirmados, sem estimativas. A demonstração é inteiramente sintética. Consulte [métricas, segurança e limitações](docs/monitoring.md).
 
 Na versão 0.2.1, os gráficos deslizam continuamente em Canvas, com picos e lacunas preservados. As janelas curtas são alimentadas por eventos, sem recarregar o histórico a cada segundo. [Detalhes e medições](docs/charts.md).
 

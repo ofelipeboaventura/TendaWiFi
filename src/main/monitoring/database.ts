@@ -3,6 +3,7 @@ import { statSync } from 'node:fs';
 import { z } from 'zod';
 import { TRAFFIC_GAP_MS, PROBE_GAP_MS } from '../../shared/monitoring';
 import { reduceSamples } from '../../shared/chart';
+import type { ResourceSample } from '../../shared/monitoring';
 import { defaultMonitorSettings, type CounterDelta, type DeviceHistory, type MonitorEvent, type MonitorPoint, type MonitorQuery, type MonitorReading, type MonitorSettings, type MonitoringHistory, type ProbeSample } from '../../shared/monitoring';
 import { periodMs, qualityMetrics, safeSettings, probeSchema } from './metrics';
 
@@ -17,6 +18,7 @@ const minuteSchema = z.strictObject({ breakBefore: z.boolean().optional(), at: f
 const eventSchema = z.strictObject({ id: z.string().uuid(), at: finite, category: z.enum(['connection', 'quality', 'resources', 'collector', 'storage']), severity: z.enum(['info', 'warning', 'critical']), state: z.enum(['opened', 'resolved', 'info']), message: z.string().max(1000), target: z.string().max(128).optional(), durationMs: finite.optional() });
 const readMinute = (raw: unknown): Minute => minuteSchema.parse(JSON.parse(String(raw)));
 const readProbes = (raw: unknown) => z.array(probeSchema).max(24).parse(JSON.parse(String(raw)));
+export const resourceSampleSchema = z.strictObject({ id: z.string().uuid(), nodeId: z.string().min(1).max(128).refine(v => !/[\x00-\x1f\x7f]/.test(v)), at: z.number().int().nonnegative(), cpu: z.number().finite().min(0).max(100).nullable(), memory: z.number().finite().min(0).max(100).nullable(), breakBefore: z.boolean() });
 export interface StoredSample { reading: MonitorReading; at: number; deltas: CounterDelta[]; probes: ProbeSample[]; breakBefore?: boolean }
 export type StorageHealth = MonitoringHistory['storage'];
 export class MonitorDatabase {
@@ -27,8 +29,9 @@ export class MonitorDatabase {
     try {
     this.db.exec('PRAGMA busy_timeout=3000; PRAGMA auto_vacuum=INCREMENTAL; PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA wal_autocheckpoint=256;');
     const version = Number(this.db.prepare('PRAGMA user_version').get()?.user_version);
-    if (version > 1) { this.db.close(); throw Error('Unsupported monitoring schema'); }
+    if (version > 2) { this.db.close(); throw Error('Unsupported monitoring schema'); }
     if (!version) this.db.exec(`BEGIN; CREATE TABLE settings(profile TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE minutes(profile TEXT NOT NULL, mac TEXT NOT NULL, bucket INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(profile,mac,bucket)); CREATE INDEX minute_time ON minutes(profile,bucket); CREATE TABLE probes(profile TEXT NOT NULL, target TEXT NOT NULL, bucket INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(profile,target,bucket)); CREATE TABLE events(profile TEXT NOT NULL, id TEXT NOT NULL, at INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(profile,id)); CREATE INDEX event_time ON events(profile,at); PRAGMA user_version=1; COMMIT;`);
+    if (version < 2) this.db.exec('BEGIN; CREATE TABLE resource_samples(profile TEXT NOT NULL,id TEXT NOT NULL,at INTEGER NOT NULL,data TEXT NOT NULL,PRIMARY KEY(profile,id)); CREATE INDEX resource_time ON resource_samples(profile,at); PRAGMA user_version=2; COMMIT;');
     if (this.db.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok') { this.db.close(); throw Error('Corrupt monitoring database'); }
     } catch (error) { try { this.db.close(); } catch { /* constructor must release even a corrupt database */ } throw error; }
   }
@@ -39,7 +42,6 @@ export class MonitorDatabase {
   append(profile: string, sample: StoredSample): StorageHealth {
     const { reading, at, deltas, probes } = sample, bucket = Math.floor(at / 60000) * 60000;
     if (at - this.lastMaintenance >= 60000 || this.fileBytes() > this.maxBytes) this.maintain(at);
-    const resource = reading.resources.find(r => r.current && r.sampledAt !== null && at - r.sampledAt <= 30000);
     const goodProbe = probes.find(p => p.status === 'success' && p.target === '1.1.1.1');
     const entries = [{ mac: 'wan', name: 'Internet (WAN)', upload: reading.overview.upload, download: reading.overview.download, online: reading.overview.internet }, ...reading.clients.map(d => ({ mac: d.mac, name: d.name, upload: d.online ? d.upload : 0, download: d.online ? d.download : 0, online: d.online }))];
     this.db.exec('BEGIN');
@@ -50,11 +52,15 @@ export class MonitorDatabase {
         const row: Minute = previous ? readMinute(previous.data) : { at, lastAt: at, mac: item.mac, name: item.name, samples: 0, sumUp: 0, sumDown: 0, peakUp: 0, peakDown: 0, online: 0, uptime: 0, cpuSum: 0, cpuN: 0, memorySum: 0, memoryN: 0, latencySum: 0, latencyN: 0, uploadBytes: null, downloadBytes: null, scope: null };
         row.at = Math.min(row.at, at); row.lastAt = Math.max(row.lastAt, at); row.name = item.name; row.samples++; row.sumUp += item.upload; row.sumDown += item.download; row.peakUp = Math.max(row.peakUp, item.upload); row.peakDown = Math.max(row.peakDown, item.download); row.online += Number(item.online); row.uptime = reading.overview.uptime;
         const delta = deltas.find(d => d.id === item.mac); if (delta) { row.uploadBytes = (BigInt(row.uploadBytes ?? '0') + BigInt(delta.upload)).toString(); row.downloadBytes = (BigInt(row.downloadBytes ?? '0') + BigInt(delta.download)).toString(); row.scope = row.scope && row.scope !== delta.scope ? 'device' : delta.scope; }
-        if (item.mac === 'wan') { if (resource?.cpu != null) { row.cpuSum += resource.cpu; row.cpuN++; } if (resource?.memory != null) { row.memorySum += resource.memory; row.memoryN++; } if (goodProbe?.latency != null) { row.latencySum += goodProbe.latency; row.latencyN++; } }
+        if (item.mac === 'wan' && goodProbe?.latency != null) { row.latencySum += goodProbe.latency; row.latencyN++; }
         put.run(profile, item.mac, bucket, JSON.stringify(row));
       }
       const getProbe = this.db.prepare('SELECT data FROM probes WHERE profile=? AND target=? AND bucket=?'), putProbe = this.db.prepare('INSERT INTO probes(profile,target,bucket,data) VALUES(?,?,?,?) ON CONFLICT(profile,target,bucket) DO UPDATE SET data=excluded.data');
       for (const probe of probes) { const b = Math.floor(probe.at / 60000) * 60000, old = getProbe.get(profile, probe.target, b); const rows: ProbeSample[] = old ? readProbes(old.data) : []; if (!rows.some(r => r.at === probe.at)) rows.push({target:probe.target,at:probe.at,latency:probe.latency,status:probe.status}); putProbe.run(profile, probe.target, b, JSON.stringify(rows.slice(-24))); }
+      if (reading.resourceSample) {
+        const resource = resourceSampleSchema.parse(reading.resourceSample);
+        if (resource.at <= at && at - resource.at <= periodMs['30d']) this.db.prepare('INSERT OR IGNORE INTO resource_samples(profile,id,at,data) VALUES(?,?,?,?)').run(profile,resource.id,resource.at,JSON.stringify(resource));
+      }
       this.db.exec('COMMIT');
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }
     if (this.fileBytes() > this.maxBytes) this.maintain(at);
@@ -65,11 +71,13 @@ export class MonitorDatabase {
     this.lastMaintenance = now; const cutoff = now - periodMs['30d'];
     for (const table of ['minutes', 'probes'] as const) this.db.prepare(`DELETE FROM ${table} WHERE bucket<?`).run(cutoff);
     this.db.prepare('DELETE FROM events WHERE at<?').run(cutoff);
+    this.db.prepare('DELETE FROM resource_samples WHERE at<?').run(cutoff);
     this.db.exec('PRAGMA wal_checkpoint(TRUNCATE); PRAGMA incremental_vacuum(4096);');
     let bytes = this.fileBytes(), trimmed = false;
     for (let i = 0; bytes > this.maxBytes && i < 31; i++) {
       const earliest = Number(this.db.prepare('SELECT MIN(bucket) AS at FROM minutes').get()?.at ?? now); const end = earliest + 86400000;
       this.db.prepare('DELETE FROM minutes WHERE bucket<?').run(end); this.db.prepare('DELETE FROM probes WHERE bucket<?').run(end); this.db.prepare('DELETE FROM events WHERE at<?').run(end);
+      this.db.prepare('DELETE FROM resource_samples WHERE at<?').run(end);
       this.db.exec('PRAGMA wal_checkpoint(TRUNCATE); PRAGMA incremental_vacuum;'); bytes = this.fileBytes(); trimmed = true;
     }
     this.health = { healthy: bytes <= this.maxBytes, message: trimmed ? 'O limite de armazenamento reduziu a retenção efetiva.' : this.health.message, earliestAt: this.db.prepare('SELECT MIN(bucket) AS at FROM minutes').get()?.at as number | null ?? null, bytes };
@@ -81,6 +89,7 @@ export class MonitorDatabase {
   }
   history(profile: string, query: MonitorQuery, now = Date.now()): MonitoringHistory {
     const from = now - periodMs[query.period], target = query.deviceMac ?? 'wan';
+    const resources: ResourceSample[] = query.deviceMac ? [] : this.db.prepare('SELECT data FROM resource_samples WHERE profile=? AND at>=? AND at<=? ORDER BY at LIMIT 20000').all(profile,from,now).map(r=>resourceSampleSchema.parse(JSON.parse(String(r.data))));
     const rows: Minute[] = [...this.db.prepare('SELECT data FROM minutes WHERE profile=? AND mac=? AND bucket>=? AND bucket<=? ORDER BY bucket').iterate(profile, target, Math.ceil(from / 60000) * 60000, now)].map(r => readMinute(r.data));
     const point = (r: Minute): MonitorPoint => ({ at: r.at, upload: r.sumUp / r.samples, download: r.sumDown / r.samples, online: r.online > 0, uptime: r.uptime, cpu: r.cpuN ? r.cpuSum / r.cpuN : null, memory: r.memoryN ? r.memorySum / r.memoryN : null, latency: r.latencyN ? r.latencySum / r.latencyN : null });
     const points: MonitorPoint[] = []; const stride = Math.max(1, Math.ceil(rows.length / 800));
@@ -94,7 +103,7 @@ export class MonitorDatabase {
     const samples = rows.reduce((n, r) => n + r.samples, 0), addBytes = (key: 'uploadBytes' | 'downloadBytes') => rows.some(r => r[key] !== null) ? rows.reduce((n, r) => n + BigInt(r[key] ?? '0'), 0n).toString() : null;
     const probes: ProbeSample[] = []; for (const r of this.db.prepare('SELECT data FROM probes WHERE profile=? AND bucket>=? AND bucket<=? ORDER BY bucket').iterate(profile, Math.ceil(from / 60000) * 60000, now)) probes.push(...readProbes(r.data));
     const latency = probes.filter(p => p.target === '1.1.1.1').sort((a,b)=>a.at-b.at).map((p,i,all)=>({at:p.at,value:p.status==='success'?p.latency:null,breakBefore:Boolean(p.breakBefore||i>0&&p.at-all[i-1].at>PROBE_GAP_MS)}));
-    return { chart: {epoch:'',sequence:0,latency:reduceSamples(latency,200)}, period: query.period, from, to: now, points, devices: [...devices.values()].map(d => ({ ...d.row, meanUpload: d.up / d.row.samples, meanDownload: d.down / d.row.samples })).sort((a, b) => b.meanDownload - a.meanDownload).slice(0, 1024), events: [...this.db.prepare('SELECT data FROM events WHERE profile=? AND at>=? AND at<=? ORDER BY at DESC LIMIT 500').iterate(profile, from, now)].map(r => eventSchema.parse(JSON.parse(String(r.data)))), quality: qualityMetrics(probes, [...new Set(probes.map(p => p.target))]), summary: { samples, meanUpload: samples ? rows.reduce((n, r) => n + r.sumUp, 0) / samples : 0, meanDownload: samples ? rows.reduce((n, r) => n + r.sumDown, 0) / samples : 0, peakUpload: Math.max(0, ...rows.map(r => r.peakUp)), peakDownload: Math.max(0, ...rows.map(r => r.peakDown)), availability: samples ? rows.reduce((n, r) => n + r.online, 0) / samples * 100 : null, uploadBytes: addBytes('uploadBytes'), downloadBytes: addBytes('downloadBytes'), firstAt: rows[0]?.at ?? null, lastAt: rows.at(-1)?.lastAt ?? null, coverage: Math.min(100, samples / (periodMs[query.period] / 1000) * 100) }, storage: this.health };
+    return { resources, chart: {epoch:'',sequence:0,latency:reduceSamples(latency,200)}, period: query.period, from, to: now, points, devices: [...devices.values()].map(d => ({ ...d.row, meanUpload: d.up / d.row.samples, meanDownload: d.down / d.row.samples })).sort((a, b) => b.meanDownload - a.meanDownload).slice(0, 1024), events: [...this.db.prepare('SELECT data FROM events WHERE profile=? AND at>=? AND at<=? ORDER BY at DESC LIMIT 500').iterate(profile, from, now)].map(r => eventSchema.parse(JSON.parse(String(r.data)))), quality: qualityMetrics(probes, [...new Set(probes.map(p => p.target))]), summary: { samples, meanUpload: samples ? rows.reduce((n, r) => n + r.sumUp, 0) / samples : 0, meanDownload: samples ? rows.reduce((n, r) => n + r.sumDown, 0) / samples : 0, peakUpload: Math.max(0, ...rows.map(r => r.peakUp)), peakDownload: Math.max(0, ...rows.map(r => r.peakDown)), availability: samples ? rows.reduce((n, r) => n + r.online, 0) / samples * 100 : null, uploadBytes: addBytes('uploadBytes'), downloadBytes: addBytes('downloadBytes'), firstAt: rows[0]?.at ?? null, lastAt: rows.at(-1)?.lastAt ?? null, coverage: Math.min(100, samples / (periodMs[query.period] / 1000) * 100) }, storage: this.health };
   }
   close() { this.db.close(); }
 }

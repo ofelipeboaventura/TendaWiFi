@@ -1,11 +1,12 @@
-import { PROBE_GAP_MS, TRAFFIC_GAP_MS, type ChartSample, type MonitorPoint, type MonitoringPeriod } from '../../shared/monitoring';
+import { PROBE_GAP_MS, TRAFFIC_GAP_MS, type ChartSample, type MonitorPoint, type MonitoringPeriod, type ResourceSample } from '../../shared/monitoring';
 import { chartPeriods, reduceSamples } from '../../shared/chart';
 export type ChartKind = 'traffic' | 'resources' | 'latency';
 export interface PlotSeries { name: string; color: string; samples: readonly ChartSample[] }
-export function makeSeries(points: readonly MonitorPoint[], kind: ChartKind, period: MonitoringPeriod, latency?: readonly ChartSample[]): PlotSeries[] {
+export function makeSeries(points: readonly MonitorPoint[], kind: ChartKind, period: MonitoringPeriod, latency?: readonly ChartSample[], resources?: readonly ResourceSample[]): PlotSeries[] {
   const short = chartPeriods[period] <= 900000;
   const values = (key: 'upload' | 'download' | 'cpu' | 'memory' | 'latency', scale = 1) => points.map((p,i)=>({at:p.at,value:p[key]===null?null:p[key]!*scale,breakBefore:p.breakBefore??Boolean(i&&short&&p.at-points[i-1].at>(key==='latency'?PROBE_GAP_MS:TRAFFIC_GAP_MS))}));
   if(kind==='traffic')return[{name:'Download',color:'#ff9254',samples:values('download',8/1e6)},{name:'Upload',color:'#79aaff',samples:values('upload',8/1e6)}];
+  if(kind==='resources'&&resources)return[{name:'CPU',color:'#ff9254',samples:resources.map(r=>({at:r.at,value:r.cpu,breakBefore:true}))},{name:'Mem\u00f3ria',color:'#79aaff',samples:resources.map(r=>({at:r.at,value:r.memory,breakBefore:true}))}];
   if(kind==='resources')return[{name:'CPU',color:'#ff9254',samples:values('cpu')},{name:'Memória',color:'#79aaff',samples:values('memory')}];
   return[{name:'Latência',color:'#6dd4b0',samples:latency??values('latency')}];
 }

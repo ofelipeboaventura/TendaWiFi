@@ -1,4 +1,4 @@
-# Monitoramento — versão 0.2.0
+# Monitoramento — versão 0.2.2
 
 A versão 0.2.1 acrescenta Canvas com deslizamento contínuo, entrega incremental e critério unificado de continuidade. Consulte [gráficos, integridade e medições de desempenho](charts.md). Formato persistido, retenção e restrições de métricas permanecem compatíveis.
 
@@ -13,7 +13,7 @@ Em 24/10/2026, uma inspeção autenticada somente de leitura confirmou quatro n�
 | Velocidade WAN | `wanStatus.wanUpSpeed/wanDownSpeed`, unidade legada KB/s, normalizada para bytes/s; interface em Mbps. |
 | Velocidade por cliente | `deviceList[].onlineList/guestList[].upSpeed/downSpeed`; a interface identifica tráfego do dispositivo, sem assumir que exclui rede local. |
 | Consumo acumulado | Nenhum contador acumulado com semântica comprovada apareceu nos módulos inspecionados. O adaptador real retorna contadores indisponíveis. **Não existe integração das velocidades para estimar consumo.** |
-| CPU e memória | O código original usa `syschkInfo.data[item_name=run_status].details.cpu_rate/mem_rate`. Consultamos somente resultados existentes, sem `CLEAR_MODULE`, start, init ou optimize. Nesta inspeção não havia percentuais disponíveis. Resultados sem horário confirmado têm atualidade desconhecida e não alimentam gráficos ou alertas. |
+| CPU e memória | `syschkInfo.data[item_name=run_status].details.cpu_rate/mem_rate`, percentuais do roteador principal. Na 0.2.2, o diagnóstico `check/init` e `check/start` renova a medição a cada 5 minutos; consultas a cada 2 segundos acompanham a conclusão, com prazo de 120 segundos. Não utiliza `CLEAR_MODULE` nem `optimize`. Resultados antigos sem horário confirmado mantêm atualidade desconhecida. |
 | Uptime | `systemCfg.runTime`, segundos do roteador principal; uma redução indica possível reinicialização/reinício do contador. |
 | Mesh | Topologia, presença, identificação e distribuição dos clientes por nó. Não são inventadas métricas de CPU dos satélites. |
 | Qualidade | ICMP deste computador para o roteador selecionado, Cloudflare `1.1.1.1` e Google `8.8.8.8`. Não equivale a uma sonda executada dentro do roteador. |
@@ -27,7 +27,7 @@ A demonstração fica identificada em todas as telas, usa banco em memória, con
 - Um coletor no processo principal mantém tráfego em cadência-alvo de 1 segundo, metadados/topologia em 10 segundos e resultados passivos de recursos em 15 segundos. Respostas lentas não se sobrepõem. Falhas usam espera de 2/5/15 segundos. Sessão expirada interrompe a coleta e exige login; não há repetição automática de senha.
 - A interface recebe snapshots por evento tipado, sem consultas duplicadas de tráfego. A leitura explícita após aplicar configuração continua consultando o roteador para preservar a barreira de resultado incerto.
 - SQLite roda em worker separado. Cada roteador possui perfil derivado de sua identificação primária, modelo e hardware. O arquivo `monitoring.sqlite` e WAL ficam na pasta `userData` do Electron, sob o usuário Windows. A demonstração não mistura dados com esse arquivo.
-- Os últimos 15 minutos ficam detalhados em memória. No disco, velocidades/recursos são agregados por minuto; sondas e eventos mantêm seus horários. Histórico longo usa cache de até 30 segundos. Médias, picos, disponibilidade e cobertura representam somente amostras observadas.
+- Os últimos 15 minutos ficam detalhados em memória. No disco, velocidades são agregadas por minuto; sondas, recursos por diagnóstico e eventos mantêm seus horários. Histórico longo usa cache de até 30 segundos. Médias, picos, disponibilidade e cobertura representam somente amostras observadas.
 - A retenção é de 30 dias. O limite de 512 MiB considera banco, WAL e SHM; registros mais antigos são removidos se necessário, com aviso de redução da retenção. O tamanho mínimo estrutural do SQLite não pode ser reduzido indefinidamente.
 - Escritas têm fila limitada. Disco cheio, corrupção ou worker ocupado não interrompem a coleta ao vivo; falhas aparecem como indisponibilidade do histórico, sem sucesso presumido. Migrações futuras desconhecidas são recusadas, preservando o arquivo.
 - Fechar a janela oculta o painel e mantém a bandeja. **Sair** grava as operações pendentes e encerra. Suspender o Windows interrompe sondas/coleta; retomar registra a lacuna. Não foi configurada inicialização automática do Windows.
@@ -39,7 +39,17 @@ Um helper PowerShell/.NET fixo, oculto e sem shell interpolada executa uma rodad
 
 Média, p95 e perda usam respostas válidas da janela selecionada; a variação é a média das diferenças absolutas entre respostas consecutivas próximas. Erros locais do helper são indisponibilidade, não perda ICMP. Um destino sem resposta, isoladamente, não declara queda de Internet. A disponibilidade da Internet é a informada pelo roteador entre as coletas, acompanhada da cobertura de observação.
 
-Padrões ajustáveis: latência >100 ms por 30 s; perda >5% em janela de 5 min com ao menos 30 sondas; CPU >80% e memória >90% por 60 s, exclusivamente com atualidade confirmada; saturação >90% por 30 s, apenas se a capacidade contratada foi informada. Alertas abrem e resolvem incidentes. Notificações do Windows são limitadas a uma por 5 minutos; silenciamento mantém os registros. A capacidade contratada não é inferida da velocidade Ethernet.
+Padrões ajustáveis: latência >100 ms por 30 s; perda >5% em janela de 5 min com ao menos 30 sondas; saturação >90% por 30 s, apenas se a capacidade contratada foi informada. CPU/memória medidas a cada 5 minutos não acionam alertas de uso contínuo por 60 segundos. Os campos legados desses limites permanecem nas preferências persistidas para compatibilidade. Alertas abrem e resolvem incidentes. Notificações do Windows são limitadas a uma por 5 minutos; silenciamento mantém os registros. A capacidade contratada não é inferida da velocidade Ethernet.
+
+## Diagnóstico de recursos na versão 0.2.2
+
+A opção **Coletar recursos por diagnóstico** começa habilitada. Inicia um ciclo após conectar, com intervalo-alvo de cinco minutos entre os inícios dos ciclos; não há sobreposição nem repetição imediata ao alternar a preferência. Falhas e manutenção podem adiar o próximo ciclo. A manutenção confirmada tem prioridade. Pausar interrompe o ciclo próprio; suspensão e mudança de sessão invalidam o acompanhamento. Operações externas em andamento são preservadas.
+
+Uma amostra exige `start` confirmado, observação de `checking` e depois `checked`, com `run_status` válido. O firmware muda para `checking` já no `init`; esse estado inicial sozinho não comprova execução. O comando `start` vem após o `init` reconhecido, como no painel original. Timeout de envio exige reconciliação e nunca repete a escrita automaticamente. O protocolo não oferece identificador exclusivo de execução: uso simultâneo por outro administrador continua uma limitação do equipamento.
+
+CPU/memória são pontos reais de cada diagnóstico, sem interpolação ou cópia nas leituras WAN. O horário é a observação local da conclusão. Os cartões preservam a última leitura e sua idade, indicando desatualização após seis minutos. Valores passivos sem horário conhecido não entram no histórico. A migração SQLite 1→2 acrescenta `resource_samples`, sem remover tabelas ou preferências; identidade da amostra impede duplicações. CSV de recursos exporta as medições originais. Satélites não recebem valores inventados.
+
+Em 24/10/2026, um ciclo real confirmou CPU **8,75%** e memória **65,11%**, iguais aos campos usados pelo painel original, sem `CLEAR_MODULE` nem otimização. Evidência sanitizada: `artifacts/monitoring/diagnostic-result.json`. O diagnóstico completo também verifica Wi-Fi, WAN, ping, DNS e IPv6; não foi comprovada uma chamada exclusiva para recursos. Para desativar essa função no processo principal, inclusive nos testes somente de leitura, use a variável de ambiente `TENDA_RESOURCE_DIAGNOSTICS=false`.
 
 O executável portátil utiliza [notificações nativas da bandeja](https://www.electronjs.org/docs/latest/api/tray#traydisplayballoonoptions-windows), evitando exigir instalação, registro COM ou atalhos permanentes no menu Iniciar. As preferências de silêncio do Windows são respeitadas; clicar no aviso abre o painel.
 

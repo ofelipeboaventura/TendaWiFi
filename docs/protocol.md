@@ -50,4 +50,6 @@ O formato anexado de firmware tem um prefixo de quatro bytes big-endian igual ao
 
 ## Limitações verificáveis
 
+Na versão 0.2.2 foi validado um diagnóstico ativo autorizado: `syschkInfo:{operation_name:"check",operation_action:"init"|"start"|"stop"}`. O `init` deixa `check_type:"checking"` e todos os itens `unchecked`; somente `start` inicia os testes. A leitura comum de `syschkInfo`, sem `CLEAR_MODULE`, acompanha progresso e conclusão. CPU/memória vêm de `run_status.details.cpu_rate/mem_rate`. Não há identificador exclusivo de execução nem mecanismo de diagnóstico por satélite comprovado. Essa validação não executou `meshOptimize`, alterações de configuração ou firmware.
+
 A implementação tem testes com respostas e credenciais sintéticas. Login real, escrita, atualização e restauração no equipamento de produção não foram usados como teste de desenvolvimento. O protocolo e os mapeamentos foram reconstruídos de código estático e observação do painel, portanto comportamento de escrita real permanece sujeito a validação controlada. Desconectar o aplicativo apaga a sessão local; não se afirma que o token já emitido foi revogado no roteador. O ciclo de vida e a expiração desse token são impostos pelo firmware original.

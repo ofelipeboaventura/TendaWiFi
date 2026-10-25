@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, ArrowUpToLine, Check, Download, FileCheck2, FileUp, KeyRound, ListRestart, Network, Plus, Power, Radio, RefreshCw, RotateCcw, Search, ShieldAlert, Trash2 } from 'lucide-react';
 import type { ActionRequest, AuditEntry, ChangePreview, ConnectionStatus, MaintenanceStatus, MeshNode, SelectedFile } from '../shared/types';
+import { withMaintenanceTarget } from '../shared/types';
 import { Badge, CardTitle, Empty, Field, Spinner, formatBytes, timeLabel } from './components';
 import type { Request } from './FeatureEditor';
 
@@ -10,7 +11,7 @@ export function Maintenance({ nodes, connection, request, onPreview }: { nodes: 
   useEffect(() => { let stopped = false, running = false, timer: ReturnType<typeof setTimeout> | undefined; const poll = async () => { if (running || stopped) return; running = true; const started = performance.now(); let failed = false; try { const result = await request(window.tenda.maintenanceStatus()); if (!stopped) setStatus(result); } catch { failed = true; /* Preserve last confirmed maintenance state. */ } finally { running = false; if (!stopped) timer = setTimeout(() => { void poll(); }, document.hidden || failed ? 15000 : Math.max(0, 1000 - (performance.now() - started))); } }; void poll(); return () => { stopped = true; if (timer) clearTimeout(timer); }; }, [request]);
   const selectedNode = nodes.find(node => node.id === nodeId) ?? nodes.find(node => node.primary) ?? nodes[0];
   const selectedFirmware = status.firmware.find(item => item.nodeId === selectedNode?.id);
-  const action = async (input: ActionRequest) => { setBusy(input.action); try { onPreview(await request(window.tenda.prepareAction({ ...input, ...(input.nodeId !== undefined ? {} : selectedNode ? { nodeId: selectedNode.id } : {}) }))); if (input.action === 'changePassword') { setOldPassword(''); setNewPassword(''); setConfirmPassword(''); } } catch { /* Application displays safe backend error. */ } finally { setBusy(''); } };
+  const action = async (input: ActionRequest) => { setBusy(input.action); try { onPreview(await request(window.tenda.prepareAction(withMaintenanceTarget(input, selectedNode?.id)))); if (input.action === 'changePassword') { setOldPassword(''); setNewPassword(''); setConfirmPassword(''); } } catch { /* Application displays safe backend error. */ } finally { setBusy(''); } };
   const select = async (kind: SelectedFile['kind']) => { setBusy(`select-${kind}`); try { setFile(await request(window.tenda.selectFile({ kind }))); } catch { /* Application displays error. */ } finally { setBusy(''); } };
   const backup = async () => { setBusy('backup'); try { await request(window.tenda.backup()); } catch { /* Application displays error. */ } finally { setBusy(''); } };
   const actionButton = (name: string, icon: React.ReactNode, label: string, handler: () => void, danger = false) => <button className={`btn ${danger ? 'danger-outline' : 'secondary'}`} disabled={Boolean(busy)} onClick={handler}>{busy === name ? <Spinner small /> : icon}{label}</button>;
