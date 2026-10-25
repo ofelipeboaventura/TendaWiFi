@@ -1,11 +1,12 @@
 // Development-only harness. Excluded from packaged application files.
-const {app,BrowserWindow,dialog}=require('electron');
+const {app,BrowserWindow,dialog,ipcMain}=require('electron');
 const fs=require('node:fs');const path=require('node:path');
 const output=path.resolve('artifacts');fs.mkdirSync(output,{recursive:true});
 const packagedAsar=process.argv.includes('--packaged-asar');
 const profile=path.join(output,packagedAsar?'smoke-asar-profile':'smoke-profile');fs.mkdirSync(profile,{recursive:true});app.setPath('userData',profile);
 dialog.showSaveDialog=async(_window,options)=>({canceled:false,filePath:path.join(output,options.defaultPath)});
 const findings={errors:[],checks:[]};
+let historyCalls=0;const register=ipcMain.handle.bind(ipcMain);ipcMain.handle=(channel,handler)=>register(channel,async(...args)=>{if(channel==='tenda:monitoringHistory')historyCalls++;return handler(...args)});
 BrowserWindow.prototype.show=function(){};
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function until(fn,timeout=15000){const end=Date.now()+timeout;while(Date.now()<end){if(await fn())return;await wait(80);}throw Error('Timed out waiting for application state');}
@@ -27,8 +28,13 @@ app.on('browser-window-created',(_event,win)=>{
       await until(()=>evaluate(win,`Boolean(document.querySelector('.app-shell')) && document.querySelector('.metric-card') !== null`));
       await wait(250);await screenshot(win,'overview');findings.checks.push('demo overview and polling');
       await clickText(win,'Monitoramento','.nav-item');await wait(2200);
-      await until(()=>evaluate(win,`document.querySelector('.monitor-chart path') !== null`));
+      await until(()=>evaluate(win,`document.querySelector('.monitor-series-layer[data-painted]') !== null`));
       await screenshot(win,'monitor-overview');
+      const initialHistoryCalls=historyCalls;await wait(1500);if(historyCalls!==initialHistoryCalls)throw Error('Per-second history polling still active');findings.checks.push('incremental chart stream without history polling');
+      win.webContents.beginFrameSubscription(()=>{});await evaluate(win,"window.chartStrokes=0;window.originalStroke=CanvasRenderingContext2D.prototype.stroke;CanvasRenderingContext2D.prototype.stroke=function(...args){if(this.canvas.classList.contains('monitor-series-layer'))window.chartStrokes++;return window.originalStroke.apply(this,args)};true");
+      await wait(150);const moving=await evaluate(win,'window.chartStrokes');if(moving<2)throw Error('Chart animation not moving');
+      win.webContents.setBackgroundThrottling(true);win.hide();await wait(200);findings.hiddenDocument=await evaluate(win,'document.hidden');const frozen=await evaluate(win,'window.chartStrokes');await wait(300);if(await evaluate(win,'document.hidden')&&await evaluate(win,'window.chartStrokes')!==frozen)throw Error('Hidden chart still drawing');win.webContents.setBackgroundThrottling(false);await wait(150);win.webContents.endFrameSubscription();findings.checks.push('canvas animation and hidden-window pause');
+
       const monitor=await evaluate(win,'window.tenda.monitoringStatus()');if(!monitor.ok||!monitor.data.storage.healthy||monitor.data.clients.length<5)throw Error('Monitor collector or SQLite worker failed');
       const history=await evaluate(win,`window.tenda.monitoringHistory({period:'5m'})`);if(!history.ok||history.data.points.length<2||BigInt(history.data.summary.downloadBytes??'0')<=0n)throw Error('Monitor history or real-counter delta failed');
       const unauthorized=await evaluate(win,`window.tenda.monitoringSaveSettings({downloadMbps:100,uploadMbps:20,alerts:true,muted:false,latencyMs:100,lossPercent:5,cpuPercent:80,memoryPercent:90,saturationPercent:90,host:'8.8.8.8'})`);if(unauthorized.ok||unauthorized.error.code!=='VALIDATION')throw Error('Monitoring IPC whitelist failed');
@@ -65,4 +71,4 @@ app.on('browser-window-created',(_event,win)=>{
   });
 });
 setTimeout(()=>{findings.success=false;findings.failure='Smoke deadline exceeded';fs.writeFileSync(path.join(output,'smoke.json'),JSON.stringify(findings,null,2));app.exit(1);},60000).unref();
-require(packagedAsar?path.resolve('release/0.2.0-final/win-unpacked/resources/app.asar/out/main.cjs'):'../out/main.cjs');
+require(packagedAsar?path.resolve('release/'+require('../package.json').version+'/win-unpacked/resources/app.asar/out/main.cjs'):'../out/main.cjs');

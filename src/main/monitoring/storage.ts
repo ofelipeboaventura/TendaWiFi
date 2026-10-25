@@ -5,7 +5,8 @@ import type { StoredSample, StorageHealth } from './database';
 export interface MonitorStore {
   settings(profile: string): Promise<MonitorSettings>; saveSettings(profile: string, value: MonitorSettings): Promise<void>;
   append(profile: string, value: StoredSample): Promise<StorageHealth>; event(profile: string, value: MonitorEvent): Promise<void>;
-  history(profile: string, value: MonitorQuery): Promise<MonitoringHistory>; close(): Promise<void>;
+  probes?(profile: string, values: import('../../shared/monitoring').ProbeSample[]): Promise<void>;
+  history(profile: string, value: MonitorQuery, at?: number): Promise<MonitoringHistory>; close(): Promise<void>;
 }
 export class WorkerStore implements MonitorStore {
   private worker: Worker; private sequence = 0; private closed = false;
@@ -26,6 +27,7 @@ export class WorkerStore implements MonitorStore {
   saveSettings(profile: string, value: MonitorSettings) { return this.call<void>('saveSettings', [profile, value]); }
   append(profile: string, value: StoredSample) { return this.call<StorageHealth>('append', [profile, value]); }
   event(profile: string, value: MonitorEvent) { return this.call<void>('event', [profile, value]); }
-  history(profile: string, value: MonitorQuery) { return this.call<MonitoringHistory>('history', [profile, value]); }
+  probes(profile: string, values: import('../../shared/monitoring').ProbeSample[]) { return this.call<void>('probes', [profile, values]); }
+  history(profile: string, value: MonitorQuery, at?: number) { return this.call<MonitoringHistory>('history', [profile, value, at]); }
   async close() { if (!this.closed) { try { await this.call<void>('close', []); } catch { /* worker failure already surfaced */ } await this.worker.terminate(); this.closed = true; } }
 }

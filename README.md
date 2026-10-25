@@ -10,6 +10,8 @@ A atualização silenciosa usa um coletor central com cadência-alvo de uma roda
 
 **Monitoramento** oferece cinco abas, gráficos interativos, ranking por dispositivo, sondas ICMP, alertas do Windows, CSV e histórico local de 30 dias. A demonstração é inteiramente sintética. No firmware verificado, consumo acumulado e CPU/memória passivos não estavam disponíveis: esses valores aparecem como indisponíveis, sem estimativas. Consulte [métricas, segurança e limitações](docs/monitoring.md).
 
+Na versão 0.2.1, os gráficos deslizam continuamente em Canvas, com picos e lacunas preservados. As janelas curtas são alimentadas por eventos, sem recarregar o histórico a cada segundo. [Detalhes e medições](docs/charts.md).
+
 O programa consulta o equipamento somente após o login. Nenhuma configuração é aplicada automaticamente: alterações exigem uma revisão com confirmação; restauração e reset exigem digitar `CONFIRMAR`. A sessão e os tokens ficam em memória. Encerrar o aplicativo remove a sessão local, mas a expiração/revogação no equipamento depende do firmware.
 
 ### Login automático opcional

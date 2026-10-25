@@ -1,5 +1,7 @@
 # Monitoramento — versão 0.2.0
 
+A versão 0.2.1 acrescenta Canvas com deslizamento contínuo, entrega incremental e critério unificado de continuidade. Consulte [gráficos, integridade e medições de desempenho](charts.md). Formato persistido, retenção e restrições de métricas permanecem compatíveis.
+
 O menu **Monitoramento** contém Visão geral, Dispositivos, Qualidade, Recursos e Eventos. Gráficos têm horários, unidades, exploração pelo mouse/teclado e lacunas explícitas. Os períodos são 5/15 minutos, 1/24 horas e 7/30 dias. CSV exporta a seleção, com cabeçalhos de unidade e horários UTC; gráficos longos podem ser agregados em até 800 pontos.
 
 ## Evidências e limites do RX27 Pro

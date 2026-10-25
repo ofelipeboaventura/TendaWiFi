@@ -1,5 +1,17 @@
 # Validação das versões
 
+## Atualização 0.2.1
+
+- **173 testes aprovados** em oito arquivos. Novos cenários cobrem continuidade com leituras de 2–3 segundos, lacunas explícitas, extremos na redução de pontos, escala estável, sessão/watermark, eventos durante snapshots, buffers limitados e sondas independentes de leituras WAN pendentes.
+- **TypeScript e build de produção aprovados**.
+- **21 verificações desktop aprovadas a partir do ASAR final**, incluindo Canvas ativo, `document.hidden=true` interrompendo o desenho, ausência de polling por segundo, retorno da janela, quatro tipos de CSV, preferências e regressões das telas existentes.
+- **Benchmark sintético com 900 amostras**: p95 de desenho aproximadamente 0,3 ms; sem tarefas longas recorrentes acima de 50 ms após aquecimento. Gráfico vazio com zero desenhos/s em regime estável; fallback SVG confirmado. Limite de desenho de 60 FPS, com cerca de 55 desenhos/s observados neste ambiente. [Método e limites](charts.md).
+- **Integração real aprovada**: login automático, quatro nós, dados/histórico avançando e três sondas disponíveis. As limitações de consumo e recursos continuam explícitas.
+- **Portátil 0.2.1 validado sem Node no PATH e sem administrador**, em perfil isolado: seis amostras reais persistidas e `quick_check=ok` no SQLite; somente processos do teste foram encerrados.
+- **ASAR conferido**: dez entradas, build correspondente, fuses preservados e ausência de `.env`, firmware, pesquisa, testes e banco local no pacote. Dados persistidos mantêm o formato anterior; não houve migração destrutiva.
+
+Nenhuma configuração, diagnóstico ativo, teste de velocidade, reboot ou atualização de firmware foi executado no roteador nesta validação.
+
 ## Atualização 0.2.0
 
 - **152 testes automatizados aprovados** em sete arquivos: acrescentados contadores uint64, lacunas, roaming, escopo, schemas de telemetria, qualidade, alertas, worker/SQLite, retenção, corrupção, migrações, disco cheio, fila limitada, sondas e isolamento de credenciais/sessão.

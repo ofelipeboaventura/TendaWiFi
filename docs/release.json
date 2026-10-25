@@ -1,7 +1,7 @@
 {
-  "version": "0.2.0",
-  "file": "TendaWiFi-0.2.0.exe",
-  "bytes": 110548495,
-  "sha256": "f4e11237b04ce79f28ee91dac932048a7b3d1b545690cf61f01e57c9999c4858",
+  "version": "0.2.1",
+  "file": "TendaWiFi-0.2.1.exe",
+  "bytes": 110545059,
+  "sha256": "c7ab8d6950724f2d4d5ff750a401f52fdb67e00902019b5dc1296ed62bc85174",
   "signed": false
 }

@@ -10,7 +10,7 @@ export const pauseSchema = z.strictObject({ paused: z.boolean() });
 export const periodMs = { '5m': 300000, '15m': 900000, '1h': 3600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
 const uint64 = z.string().refine(s => /^(?:0|[1-9]\d{0,19})$/.test(s) && BigInt(s) <= 18446744073709551615n);
 export const counterSchema = z.strictObject({ id: z.string().min(1).max(128), scope: z.enum(['internet', 'device']), epoch: z.string().min(1).max(128), upload: uint64, download: uint64 });
-export const probeSchema = z.strictObject({ target: z.string().max(15), at: z.number().finite().nonnegative(), latency: z.number().finite().min(0).max(60000).nullable(), status: z.enum(['success', 'timeout', 'error']) });
+export const probeSchema = z.strictObject({ target: z.string().max(15), at: z.number().finite().nonnegative(), latency: z.number().finite().min(0).max(60000).nullable(), status: z.enum(['success', 'timeout', 'error']), breakBefore: z.boolean().optional() });
 
 /** A missing/ambiguous roaming record is not another device and must not double its traffic. */
 export function deduplicateClients(clients: ClientDevice[]): ClientDevice[] {
@@ -40,14 +40,7 @@ export class CounterTracker {
   }
 }
 
-export function qualityMetrics(samples: ProbeSample[], targets: string[]): QualityMetric[] {
-  return targets.map(target => {
-    const rows = samples.filter(s => s.target === target && s.status !== 'error').sort((a, b) => a.at - b.at), ok = rows.filter(s => s.status === 'success' && s.latency !== null), values = ok.map(s => s.latency!).sort((a, b) => a - b);
-    const changes: number[] = []; for (let i = 1; i < rows.length; i++) if (rows[i].latency !== null && rows[i - 1].latency !== null && rows[i].at - rows[i - 1].at <= 10000) changes.push(Math.abs(rows[i].latency! - rows[i - 1].latency!));
-    const last = rows.at(-1);
-    return { target, samples: rows.length, received: ok.length, mean: values.length ? values.reduce((a, b) => a + b, 0) / values.length : null, p95: values.length ? values[Math.max(0, Math.ceil(values.length * .95) - 1)] : null, jitter: changes.length ? changes.reduce((a, b) => a + b, 0) / changes.length : null, loss: rows.length ? (rows.length - ok.length) / rows.length * 100 : null, lastAt: last?.at ?? null, lastLatency: last?.latency ?? null };
-  });
-}
+export { qualityMetrics } from '../../shared/quality';
 
 export class AlertEngine {
   private conditions = new Map<string, { since: number; last: number; opened: boolean; message: string; category: MonitorEvent['category']; target?: string }>();

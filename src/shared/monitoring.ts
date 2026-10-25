@@ -10,18 +10,28 @@ export const defaultMonitorSettings: MonitorSettings = { downloadMbps: null, upl
 export interface RealCounter { id: string; scope: 'internet' | 'device'; epoch: string; upload: string; download: string }
 export interface CounterDelta { id: string; scope: 'internet' | 'device'; upload: string; download: string }
 export interface ResourceReading { nodeId: string; cpu: number | null; memory: number | null; source: 'diagnostic'; sampledAt: number | null; current: boolean }
-export interface ProbeSample { target: string; at: number; latency: number | null; status: 'success' | 'timeout' | 'error' }
+export const TRAFFIC_GAP_MS = 3500;
+export const PROBE_GAP_MS = 12500;
+export interface ChartSample { at: number; value: number | null; breakBefore: boolean }
+export interface ChartFrame { epoch: string; sequence: number; at: number; point?: MonitorPoint; devices?: { mac: string; upload: number; download: number; online: boolean }[]; probes?: ProbeSample[]; deltas?: CounterDelta[]; topologyUpdated?: boolean; resourcesUpdated?: boolean }
+export interface ChartHistory { epoch: string; sequence: number; latency: ChartSample[]; probes?: ProbeSample[]; deltas?: { at: number; values: CounterDelta[] }[] }
+export interface ProbeSample { target: string; at: number; latency: number | null; status: 'success' | 'timeout' | 'error'; breakBefore?: boolean }
 export interface QualityMetric { target: string; samples: number; received: number; mean: number | null; p95: number | null; jitter: number | null; loss: number | null; lastAt: number | null; lastLatency: number | null }
 export interface MonitorEvent { id: string; at: number; category: 'connection' | 'quality' | 'resources' | 'collector' | 'storage'; severity: 'info' | 'warning' | 'critical'; state: 'opened' | 'resolved' | 'info'; message: string; target?: string; durationMs?: number }
 export interface MonitorReading { overview: Overview; clients: ClientDevice[]; nodes: MeshNode[]; resources: ResourceReading[]; counters: RealCounter[]; routerId: string }
-export interface MonitorPoint { at: number; upload: number; download: number; online: boolean; uptime: number; cpu: number | null; memory: number | null; latency: number | null }
+export interface MonitorPoint { at: number; upload: number; download: number; online: boolean; uptime: number; cpu: number | null; memory: number | null; latency: number | null; breakBefore?: boolean }
 export interface DeviceHistory { mac: string; name: string; samples: number; meanUpload: number; meanDownload: number; peakUpload: number; peakDownload: number; uploadBytes: string | null; downloadBytes: string | null; scope: 'internet' | 'device' | null }
 export interface MonitoringHistory {
+  partial?: boolean;
+  chart?: ChartHistory;
   period: MonitoringPeriod; from: number; to: number; points: MonitorPoint[]; devices: DeviceHistory[]; events: MonitorEvent[]; quality: QualityMetric[];
   summary: { samples: number; meanUpload: number; meanDownload: number; peakUpload: number; peakDownload: number; availability: number | null; uploadBytes: string | null; downloadBytes: string | null; firstAt: number | null; lastAt: number | null; coverage: number };
   storage: { healthy: boolean; message: string; earliestAt: number | null; bytes: number };
 }
 export interface MonitoringState {
+  demo?: boolean;
+  revision?: number;
+  chart?: ChartFrame;
   status: 'collecting' | 'paused' | 'offline' | 'auth-required' | 'starting'; sampledAt: number | null; settings: MonitorSettings;
   overview: Overview | null; clients: ClientDevice[]; nodes: MeshNode[]; resources: ResourceReading[]; quality: QualityMetric[]; recentEvents: MonitorEvent[];
   consumptionSupported: boolean; storage: MonitoringHistory['storage']; probeAvailable: boolean;
