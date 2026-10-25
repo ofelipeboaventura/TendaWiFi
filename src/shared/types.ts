@@ -1,3 +1,4 @@
+import type { MonitoringCommands } from './monitoring';
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 export type Values = Record<string, JsonValue>;
@@ -20,7 +21,7 @@ export interface MaintenanceStatus { firmware: { nodeId: string; name: string; c
 export type MaintenanceAction = 'reboot' | 'reset' | 'meshOptimize' | 'meshScan' | 'meshAdd' | 'checkFirmware' | 'upgradeOnline' | 'restore' | 'firmware' | 'changePassword' | 'clearLogs';
 export interface ActionRequest { action: MaintenanceAction; nodeId?: string; fileId?: string; nodeSerial?: string; oldPassword?: string; newPassword?: string; confirmPassword?: string }
 export interface ClientChange { mac: string; nodeId: string; name?: string; blocked?: boolean; uploadLimit?: number; downloadLimit?: number }
-export interface DesktopAPI {
+export interface DesktopAPI extends MonitoringCommands {
   connect(input: { host: string; password: string }): Promise<Result<ConnectionStatus>>;
   demo(): Promise<Result<ConnectionStatus>>;
   disconnect(): Promise<Result<void>>;
@@ -39,5 +40,7 @@ export interface DesktopAPI {
   backup(): Promise<Result<{ saved: boolean }>>;
   logs(): Promise<Result<{ router: string; audit: AuditEntry[] }>>;
   maintenanceStatus(): Promise<Result<MaintenanceStatus>>;
+  onMonitoringUpdate(listener: (state: import('./monitoring').MonitoringState) => void): () => void;
 }
+export type DesktopCommand = Exclude<keyof DesktopAPI, 'onMonitoringUpdate'>;
 declare global { interface Window { tenda: DesktopAPI } }

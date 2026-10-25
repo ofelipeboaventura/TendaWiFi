@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { ActionRequest, ApplyResult, AuditEntry, ChangePreview, ClientChange, ClientDevice, ConnectionStatus, DesktopAPI, FeatureSnapshot, MaintenanceStatus, Values } from '../shared/types';
-import { RouterClient } from './router';
+import { RouterClient, normalizeOverview, normalizeClients, normalizeMesh } from './router';
+import type { MonitorReading, ResourceReading } from '../shared/monitoring';
+import { deduplicateClients } from './monitoring/metrics';
 import { DemoRouter } from './demo';
 import { FeatureService } from './features';
 import { AppError } from './errors';
@@ -34,6 +36,10 @@ interface Pending { preview: ChangePreview; session: number; action?: ActionRequ
 const ACTION_TITLES: Record<ActionRequest['action'], string> = { reboot: 'Reiniciar roteador', reset: 'Restaurar configurações de fábrica', meshOptimize: 'Otimizar rede Mesh', meshScan: 'Procurar novos nós', meshAdd: 'Adicionar nó Mesh', checkFirmware: 'Verificar atualização', upgradeOnline: 'Atualizar firmware online', restore: 'Restaurar backup', firmware: 'Instalar firmware local', changePassword: 'Alterar senha de administração', clearLogs: 'Limpar registros' };
 
 export class AppService {
+  private telemetryRaw: Record<string, unknown> = {};
+  private telemetryResources: ResourceReading[] = [];
+  private telemetryMetadataAt = 0;
+  private demoEpoch = Date.now();
   private router: ManagedRouter;
   private featuresService: FeatureService;
   private session = 0;
@@ -46,7 +52,7 @@ export class AppService {
   constructor(private files: FileStore, private makeRouter: () => ManagedRouter = () => new RouterClient(), initialRouter?: ManagedRouter) { this.router = initialRouter ?? makeRouter(); this.featuresService = new FeatureService(this.router); }
   private audit(action: string, outcome: string) { this.entries.push({ time: new Date().toISOString(), action, outcome }); if (this.entries.length > 500) this.entries.shift(); }
   private exclusive<T>(fn: () => Promise<T>): Promise<T> { const next = this.serial.then(fn, fn); this.serial = next.then(() => undefined, () => undefined); return next; }
-  private invalidate() { this.session++; this.scannedAt = 0; this.uncertain = false; this.pending.clear(); this.files.clear(); this.featuresService.clear(); this.featuresService = new FeatureService(this.router); }
+  private invalidate() { this.session++; this.telemetryRaw = {}; this.telemetryResources = []; this.telemetryMetadataAt = 0; this.demoEpoch = Date.now(); this.scannedAt = 0; this.uncertain = false; this.pending.clear(); this.files.clear(); this.featuresService.clear(); this.featuresService = new FeatureService(this.router); }
   private requireConnection() { if (!this.router.getConnection().connected) throw new AppError('AUTH', 'Conecte-se ao roteador para continuar.'); }
   private requireWritable() { this.requireConnection(); if (this.uncertain) throw new AppError('UNCERTAIN', 'Uma operação anterior ainda precisa ser verificada. Atualize a visão geral ou entre novamente antes de revisar outra alteração.'); const s = this.router.getConnection(); if (!s.demo && (!/RX27[_\s-]*PRO/i.test(s.model) || !/^V?16\.03\.28\.20(?:_|\(|$)/i.test(s.firmware))) throw new AppError('UNSUPPORTED', 'Esta versão do equipamento ainda não foi validada para alterações. As consultas permanecem disponíveis.'); }
   connection() { return this.router.getConnection(); }
@@ -63,6 +69,36 @@ export class AppService {
   private async readCurrent<T>(reader: (router: ManagedRouter) => Promise<T>): Promise<T> { this.requireConnection(); const session = this.session, router = this.router; const result = await reader(router); if (this.session !== session || this.router !== router) throw new AppError('AUTH', 'A sessão mudou durante a consulta. Entre novamente.'); return result; }
   async clients() { return this.readCurrent(router => router.clients()); }
   async mesh() { return this.readCurrent(router => router.mesh()); }
+  async readMonitoring(topology: boolean, resources: boolean): Promise<MonitorReading> {
+    const telemetrySession = this.session;
+    return this.readCurrent(async router => {
+      const connection = router.getConnection();
+      if (connection.demo) {
+        const overview = await router.overview(), clients = deduplicateClients(await router.clients()), nodes = await router.mesh(), at = Date.now(), seconds = Math.floor((at - this.demoEpoch) / 1000);
+        return { overview, clients, nodes, routerId: 'demo', resources: [{ nodeId: nodes[0]?.id ?? 'demo', cpu: 24 + Math.sin(seconds / 12) * 9, memory: 53 + Math.sin(seconds / 30) * 3, source: 'diagnostic', sampledAt: at, current: true }], counters: [{ id: 'wan', scope: 'internet', epoch: String(this.demoEpoch), upload: (BigInt(seconds) * 1200000n).toString(), download: (BigInt(seconds) * 9000000n).toString() }, ...clients.filter(d => d.online).map((d, i) => ({ id: d.mac, scope: 'device' as const, epoch: String(this.demoEpoch), upload: (BigInt(seconds) * BigInt((i + 1) * 2000)).toString(), download: (BigInt(seconds) * BigInt((i + 1) * 30000)).toString() }))] };
+      }
+      const metadata = topology || !this.telemetryMetadataAt;
+      const data = await router.readModules(['wanStatus', 'deviceList', 'systemCfg', ...(metadata ? ['meshTopo', 'wifiBasicCfg', 'apModeStatus', 'workMode', 'localhost', 'macFilter', 'deviceVersionList'] : [])]);
+      if (telemetrySession !== this.session) throw new AppError('AUTH', 'A sessão mudou durante a coleta.');
+      const rateInput = z.union([z.number().finite().nonnegative(), z.string().regex(/^\d+(?:\.\d+)?$/)]).refine(v => Number(v) * 1024 <= 1e12);
+      const wan = object(data.wanStatus); if (!rateInput.safeParse(wan.wanUpSpeed).success || !rateInput.safeParse(wan.wanDownSpeed).success) throw new AppError('ROUTER', 'O roteador retornou velocidades inválidas.');
+      for (const node of Array.isArray(data.deviceList) ? data.deviceList : []) for (const key of ['onlineList', 'guestList']) for (const device of Array.isArray(object(node)[key]) ? object(node)[key] as unknown[] : []) { const row = object(device); if (!rateInput.safeParse(row.upSpeed).success || !rateInput.safeParse(row.downSpeed).success) throw new AppError('ROUTER', 'O roteador retornou velocidades de dispositivo inválidas.'); }
+      const raw = { ...this.telemetryRaw, ...data }; const overview = normalizeOverview(raw, connection), clients = deduplicateClients(normalizeClients(raw));
+      const validRate = (value: number) => Number.isFinite(value) && value >= 0 && value <= 1e12;
+      if (![overview.upload, overview.download, ...clients.flatMap(d => [d.upload, d.download])].every(validRate)) throw new AppError('ROUTER', 'O roteador retornou velocidades inválidas.');
+      if (resources) {
+        try {
+          // Existing results only. Never request CLEAR_MODULE, initialize, start or optimize diagnostics.
+          const diagnostic = await router.readModules(['syschkInfo']); if (telemetrySession !== this.session) throw new AppError('AUTH', 'A sessão mudou durante a coleta.'); const result = object(diagnostic.syschkInfo), rows = Array.isArray(result.data) ? result.data : [];
+          const details = object(object(rows.find(r => object(r).item_name === 'run_status')).details);
+          const percent = (value: unknown): number | null => { if (typeof value !== 'number' && typeof value !== 'string') return null; if (typeof value === 'string' && !/^\d{1,3}(?:\.\d{1,3})?%?$/.test(value)) return null; const n = Number(String(value).replace('%', '')); return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null; };
+          this.telemetryResources = [{ nodeId: normalizeMesh(raw).find(n => n.primary)?.id ?? '', cpu: percent(details.cpu_rate), memory: percent(details.mem_rate), source: 'diagnostic', sampledAt: null, current: false }];
+        } catch (error) { if (error instanceof Error && 'code' in error && error.code === 'AUTH') throw error; }
+      }
+      this.telemetryRaw = raw; if (metadata) this.telemetryMetadataAt = Date.now();
+      return { overview, clients, nodes: overview.nodes, resources: this.telemetryResources, counters: [], routerId: hash({ primary: overview.nodes.find(n => n.primary)?.id ?? connection.host, model: connection.model, hardware: connection.hardware }) };
+    });
+  }
   definitions() { this.requireConnection(); return this.featuresService.definitions(); }
   readFeature(input: { id: string }): Promise<FeatureSnapshot> { return this.readCurrent(() => this.featuresService.read(input.id)); }
   prepareChange(input: { id: string; values: Values; revision: string }) { this.requireWritable(); return this.readCurrent(() => this.featuresService.prepare(input)); }
@@ -187,7 +223,7 @@ export class AppService {
     const list = z.array(z.record(z.string(), z.unknown())).max(64).parse(data.deviceVersionList); const row = list.find(r => r.sn === id); if (row && mac.safeParse(row.mac).success) return mac.parse(row.mac); throw new AppError('UNSUPPORTED', 'O roteador não informou o endereço necessário para reiniciar este nó.');
   }
   async maintenanceStatus(): Promise<MaintenanceStatus> {
-    this.requireConnection(); const data = await this.router.readModules(['deviceVersionList']); const rows = Array.isArray(data.deviceVersionList) ? data.deviceVersionList.slice(0, 64) : [];
+    this.requireConnection(); const data = this.telemetryMetadataAt && Date.now() - this.telemetryMetadataAt < 10000 ? this.telemetryRaw : await this.router.readModules(['deviceVersionList']); const rows = Array.isArray(data.deviceVersionList) ? data.deviceVersionList.slice(0, 64) : [];
     const str = (v: unknown) => typeof v === 'string' ? v.slice(0, 256) : '';
     const firmware = rows.map(row => { const r = object(row); const v = object(r.versionInfo); return { nodeId: str(r.sn), name: str(r.nodeName), current: str(v.curSoftVersion) || str(r.softVersion) || this.connection().firmware, latest: str(v.newSoftVersion), available: v.hasNewSoftVersion === true, status: str(r.nodeStatus) }; });
     let discovered: MaintenanceStatus['discovered'] = [];

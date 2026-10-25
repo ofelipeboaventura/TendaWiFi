@@ -1,4 +1,17 @@
-# Validação da versão 0.1.2
+# Validação das versões
+
+## Atualização 0.2.0
+
+- **152 testes automatizados aprovados** em sete arquivos: acrescentados contadores uint64, lacunas, roaming, escopo, schemas de telemetria, qualidade, alertas, worker/SQLite, retenção, corrupção, migrações, disco cheio, fila limitada, sondas e isolamento de credenciais/sessão.
+- **TypeScript e build de produção aprovados**.
+- **19 verificações desktop aprovadas a partir do ASAR final**: cinco abas do monitoramento, preferências, quatro tipos de CSV, coleta após fechar a janela, pausa/retomada e regressões das telas existentes. Perfil separado, dados sintéticos, nenhuma sonda ou conexão real nessa execução.
+- **Integração real pela interface aprovada**, com login automático, quatro nós, cinco amostras históricas avançando, três destinos de sonda e helper disponível. Consumo acumulado continuou indisponível, e nenhum percentual de CPU/memória foi apresentado como atual.
+- **Helper ICMP real aprovado com ambiente mínimo**, inclusive após o isolamento das variáveis de credencial. Respostas do roteador e dos dois destinos externos foram recebidas.
+- **ASAR e fuses conferidos**: dez entradas, incluindo o worker SQLite; main, preload, worker e renderer correspondem ao build. Nenhum `.env`, firmware, banco local, script de teste ou pesquisa foi incluído.
+- **Portátil final executado sem Node no PATH e sem privilégios administrativos**, oculto em perfil isolado: seis amostras reais foram persistidas, e o banco passou em `quick_check`. Somente os processos descendentes desse teste foram encerrados.
+- **Firmware preservado**: SHA-256 `0121bd96ee3f590f9f4a21a2b60220028f7f94f460f6579382dd15e22737dd62` conferido novamente.
+
+Detalhes de origem, limites e operação estão em [monitoring.md](monitoring.md). A validação real desta versão não executou setters, diagnóstico ativo, testes de velocidade, reboot ou atualização no roteador.
 
 ## Atualização 0.1.3
 

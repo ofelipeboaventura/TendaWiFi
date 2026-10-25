@@ -6,7 +6,9 @@ Gerenciador local para **Tenda RX27 Pro V1.0 / V16.03.28.20_multi**, com interfa
 
 Abra o executável portátil mais recente indicado em `docs/release.json`, informe o IP local do roteador e a senha de administração. O programa não precisa de Node instalado nem de privilégios administrativos. **Explorar demonstração** abre um simulador inteiramente local, identificado em todas as telas.
 
-A atualização das telas ativas busca uma rodada por segundo, descontando o tempo das consultas. Consultas não se sobrepõem; se o equipamento levar mais de um segundo, a próxima rodada aguarda a conclusão. Com a tela em segundo plano ou após uma falha, a espera é de 15 segundos.
+A atualização silenciosa usa um coletor central com cadência-alvo de uma rodada por segundo, inclusive com a janela oculta. Consultas não se sobrepõem; falhas usam espera progressiva de 2/5/15 segundos. Fechar a janela mantém a coleta na bandeja; para encerrar, use **Sair** no menu da bandeja.
+
+**Monitoramento** oferece cinco abas, gráficos interativos, ranking por dispositivo, sondas ICMP, alertas do Windows, CSV e histórico local de 30 dias. A demonstração é inteiramente sintética. No firmware verificado, consumo acumulado e CPU/memória passivos não estavam disponíveis: esses valores aparecem como indisponíveis, sem estimativas. Consulte [métricas, segurança e limitações](docs/monitoring.md).
 
 O programa consulta o equipamento somente após o login. Nenhuma configuração é aplicada automaticamente: alterações exigem uma revisão com confirmação; restauração e reset exigem digitar `CONFIRMAR`. A sessão e os tokens ficam em memória. Encerrar o aplicativo remove a sessão local, mas a expiração/revogação no equipamento depende do firmware.
 

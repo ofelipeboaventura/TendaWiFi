@@ -1,7 +1,10 @@
 // Development-only harness. Excluded from packaged application files.
-const {app,BrowserWindow}=require('electron');
+const {app,BrowserWindow,dialog}=require('electron');
 const fs=require('node:fs');const path=require('node:path');
 const output=path.resolve('artifacts');fs.mkdirSync(output,{recursive:true});
+const packagedAsar=process.argv.includes('--packaged-asar');
+const profile=path.join(output,packagedAsar?'smoke-asar-profile':'smoke-profile');fs.mkdirSync(profile,{recursive:true});app.setPath('userData',profile);
+dialog.showSaveDialog=async(_window,options)=>({canceled:false,filePath:path.join(output,options.defaultPath)});
 const findings={errors:[],checks:[]};
 BrowserWindow.prototype.show=function(){};
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -23,6 +26,19 @@ app.on('browser-window-created',(_event,win)=>{
       if(!label)throw Error('Demo button missing: '+loginText.slice(0,300));await clickText(win,label);
       await until(()=>evaluate(win,`Boolean(document.querySelector('.app-shell')) && document.querySelector('.metric-card') !== null`));
       await wait(250);await screenshot(win,'overview');findings.checks.push('demo overview and polling');
+      await clickText(win,'Monitoramento','.nav-item');await wait(2200);
+      await until(()=>evaluate(win,`document.querySelector('.monitor-chart path') !== null`));
+      await screenshot(win,'monitor-overview');
+      const monitor=await evaluate(win,'window.tenda.monitoringStatus()');if(!monitor.ok||!monitor.data.storage.healthy||monitor.data.clients.length<5)throw Error('Monitor collector or SQLite worker failed');
+      const history=await evaluate(win,`window.tenda.monitoringHistory({period:'5m'})`);if(!history.ok||history.data.points.length<2||BigInt(history.data.summary.downloadBytes??'0')<=0n)throw Error('Monitor history or real-counter delta failed');
+      const unauthorized=await evaluate(win,`window.tenda.monitoringSaveSettings({downloadMbps:100,uploadMbps:20,alerts:true,muted:false,latencyMs:100,lossPercent:5,cpuPercent:80,memoryPercent:90,saturationPercent:90,host:'8.8.8.8'})`);if(unauthorized.ok||unauthorized.error.code!=='VALIDATION')throw Error('Monitoring IPC whitelist failed');
+      findings.checks.push('monitoring collector, SQLite history, counter deltas and IPC validation');
+      for(const kind of ['traffic','devices','quality','events']){const exported=await evaluate(win,`window.tenda.exportMonitoring({period:'5m',kind:${JSON.stringify(kind)}})`);if(!exported.ok||!exported.data.saved||!fs.existsSync(path.join(output,`TendaWiFi-${kind}-5m.csv`)))throw Error('CSV export failed: '+kind);}findings.checks.push('all four CSV export types');
+      const changed=await evaluate(win,`(async()=>{const current=await window.tenda.monitoringStatus();return window.tenda.monitoringSaveSettings({...current.data.settings,downloadMbps:500,uploadMbps:100,muted:true})})()`);if(!changed.ok||changed.data.downloadMbps!==500)throw Error('Monitoring settings save failed');
+      await evaluate(win,`document.querySelector('[aria-label="Configurar monitoramento"]').click()`);await until(()=>evaluate(win,`!!document.querySelector('.monitor-settings')`));await screenshot(win,'monitor-settings');await clickText(win,'Cancelar');findings.checks.push('monitoring preferences');
+      for(const label of ['Dispositivos','Qualidade','Recursos','Eventos']){await clickText(win,label,'.monitor-tabs button');await wait(200);await screenshot(win,'monitor-'+{'Dispositivos':'devices','Qualidade':'quality','Recursos':'resources','Eventos':'events'}[label]);}
+      const beforeClose=(await evaluate(win,'window.tenda.monitoringStatus()')).data.sampledAt;win.close();if(win.isDestroyed())throw Error('Close-to-tray failed');await wait(1200);const afterClose=(await evaluate(win,'window.tenda.monitoringStatus()')).data.sampledAt;if(afterClose<=beforeClose)throw Error('Background collection stopped');findings.checks.push('close to tray continues collection');
+      await evaluate(win,'window.tenda.monitoringPause({paused:true})');const pausedAt=(await evaluate(win,'window.tenda.monitoringStatus()')).data.sampledAt;await wait(1200);if((await evaluate(win,'window.tenda.monitoringStatus()')).data.sampledAt!==pausedAt)throw Error('Paused collector made a new sample');await evaluate(win,'window.tenda.monitoringPause({paused:false})');findings.checks.push('monitor pause and resume');
       const features=await evaluate(win,'window.tenda.features()');if(!features.ok||features.data.length<28)throw Error('Feature catalog missing');
       for(const feature of features.data.filter(f=>f.available!==false)){
         const result=await evaluate(win,`window.tenda.readFeature({id:${JSON.stringify(feature.id)}})`);
@@ -49,4 +65,4 @@ app.on('browser-window-created',(_event,win)=>{
   });
 });
 setTimeout(()=>{findings.success=false;findings.failure='Smoke deadline exceeded';fs.writeFileSync(path.join(output,'smoke.json'),JSON.stringify(findings,null,2));app.exit(1);},60000).unref();
-require('../out/main.cjs');
+require(packagedAsar?path.resolve('release/0.2.0-final/win-unpacked/resources/app.asar/out/main.cjs'):'../out/main.cjs');
