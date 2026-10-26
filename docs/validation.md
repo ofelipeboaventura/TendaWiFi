@@ -1,5 +1,13 @@
 # Validação das versões
 
+## Distribuição 0.5.1 — 26/10/2026
+
+Ícone próprio incorporado ao launcher portátil e ao executável Electron, nos tamanhos 16/20/24/32/40/48/64/128/256. A inspeção PE confirmou os nove PNG, produto Tenda WiFi Desktop, versão 0.5.1 e execução `asInvoker`. Os PNG da janela/bandeja também foram conferidos dentro do ASAR; os 13 arquivos/diretórios correspondem à allowlist e ao build. Os fuses continuam configurados como nas versões anteriores. Firmware original e hashes dos oito launchers arquivados foram preservados.
+
+235 testes automatizados em 14 arquivos, build TypeScript e 28 verificações desktop aprovados, incluindo coleta com janela fechada, ausência de polling por segundo, exportações e controles de autorização. O portátil final passou com PATH sem Node, usuário sem privilégios administrativos, perfil isolado, seis amostras reais, três níveis de agregados e SQLite válido. O primeiro lançamento não confirmou coleta no limite de 30 segundos; uma repetição isolada concluiu, sem saída de erro. Diagnósticos ativos permaneceram desativados; nenhuma configuração foi alterada no equipamento.
+
+O fluxo de publicação aceita somente os quatro assets conhecidos de `release/0.5.1/publish`, confere checksums locais e digests remotos, exige tag/commit coincidentes e não substitui arquivos publicados. Testes sintéticos verificam o escopo da credencial, bloqueio de destino/repositório indevido, redirecionamentos e erros sem conteúdo sensível. Evidências técnicas: `artifacts/releases/v0.5.1-package.json`, `artifacts/smoke-0.5.1-asar.json` e `artifacts/packaged-check/native-result.json`.
+
 ## Central 0.3.0 / 0.4.0 / 0.5.0 — 26/10/2026
 
 - **230 testes aprovados em 13 arquivos**, incluindo integração trapezoidal, precisão inteira, contadores prioritários, intervalos configuráveis, lacunas, relógio, roaming ambíguo, calendários de Bahia, inventário, ownership e retenção por resolução. A migração interrompida por `SQLITE_FULL` preserva a versão anterior e os dados; após liberar espaço, a repetição conclui. Foram mantidos os testes anteriores de corrupção, concorrência, suspensão, diagnóstico e autenticação.

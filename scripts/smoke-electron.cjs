@@ -2,7 +2,7 @@
 const {app,BrowserWindow,dialog,ipcMain}=require('electron');
 const fs=require('node:fs');const path=require('node:path');
 const output=path.resolve('artifacts');fs.mkdirSync(output,{recursive:true});
-const packagedAsar=process.argv.includes('--packaged-asar');const packagedVersion=process.argv.find(a=>/^--version=0\.[345]\.0$/.test(a))?.slice(10)??require('../package.json').version;
+const packagedAsar=process.argv.includes('--packaged-asar');const packagedVersion=process.argv.find(a=>/^--version=0\.(?:[34]\.0|5\.[01])$/.test(a))?.slice(10)??require('../package.json').version;
 const profile=path.join(output,packagedAsar?'smoke-asar-profile-'+packagedVersion:'smoke-profile');fs.mkdirSync(profile,{recursive:true});app.setPath('userData',profile);
 dialog.showSaveDialog=async(_window,options)=>({canceled:false,filePath:path.join(output,options.defaultPath)});
 const findings={version:packagedVersion,errors:[],checks:[]};

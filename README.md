@@ -1,16 +1,18 @@
 # Tenda WiFi Desktop
 
+<img src="resources/icon.png" alt="Ícone Tenda WiFi Desktop" width="96" height="96" />
+
 Gerenciador local para **Tenda RX27 Pro V1.0 / V16.03.28.20_multi**, com interface própria em português do Brasil. Feito em Electron, React, TypeScript e Zod. O código das telas fica em `src/renderer`; protocolo e validações ficam em `src/main`.
 
 ## Usar no Windows
 
-Abra o executável portátil mais recente indicado em `docs/release.json`, informe o IP local do roteador e a senha de administração. O programa não precisa de Node instalado nem de privilégios administrativos. **Explorar demonstração** abre um simulador inteiramente local, identificado em todas as telas.
+Baixe o portátil Windows x64 na página de **[Releases](https://github.com/ofelipeboaventura/TendaWiFi/releases/latest)**. A versão atual é **0.5.1**, com ícone próprio no executável, na janela e na bandeja. Informe o IP local do roteador e a senha de administração. O programa não precisa de Node instalado nem de privilégios administrativos. **Explorar demonstração** abre um simulador inteiramente local, identificado em todas as telas.
 
 A atualização silenciosa usa um coletor central com cadência-alvo de uma rodada por segundo, inclusive com a janela oculta. Consultas não se sobrepõem; falhas usam espera progressiva de 2/5/15 segundos. Fechar a janela mantém a coleta na bandeja; para encerrar, use **Sair** no menu da bandeja.
 
 **Monitoramento 0.5.0** inclui consumo por calendário, inventário com perfil por dispositivo, qualidade DNS/ICMP, Wi-Fi/Mesh, relatórios, heatmap e widgets organizáveis. Volumes distinguem contadores de estimativas e informam cobertura e lacunas. A retenção usa detalhes por minuto durante 30 dias, hora durante 90 dias e dia durante 24 meses, dentro de 512 MiB. CPU/memória usam o diagnóstico do roteador a cada 5 minutos. Projeções e anomalias aguardam histórico suficiente. A demonstração é sintética e não preenche datas passadas. Consulte [as três entregas e suas métricas](docs/observability.md).
 
-As entregas progressivas estão em `TendaWiFi-0.3.0.exe` (consumo/inventário), `TendaWiFi-0.4.0.exe` (qualidade/Wi-Fi/Mesh) e **`TendaWiFi-0.5.0.exe`** (central completa). Use a mais recente para continuar um histórico já atualizado. Antes de abrir outra versão, use **Sair** na bandeja da anterior. Inicialização com Windows é opcional, desativada por padrão e utiliza o executável portátil original.
+As entregas progressivas 0.3.0 (consumo/inventário), 0.4.0 (qualidade/Wi-Fi/Mesh) e 0.5.0 (central completa) foram preservadas em `release/archive`. A pasta `release/0.5.1/publish` contém os arquivos da publicação atual; `TendaWiFi-0.5.1.exe` na raiz é a cópia local ao lado da configuração privada. Use a mais recente para continuar um histórico já atualizado. Antes de abrir outra versão, use **Sair** na bandeja da anterior. Inicialização com Windows é opcional, desativada por padrão e utiliza o executável portátil original.
 
 Na versão 0.2.1, os gráficos deslizam continuamente em Canvas, com picos e lacunas preservados. As janelas curtas são alimentadas por eventos, sem recarregar o histórico a cada segundo. [Detalhes e medições](docs/charts.md).
 
@@ -58,7 +60,9 @@ npm.cmd run test:desktop
 npm.cmd run package
 ```
 
-O teste desktop usa somente demonstração, em janela oculta, e grava capturas e resultados em `artifacts/`. O empacotamento inclui apenas `out`, `dist` e o manifesto; exclui firmware, capturas, fontes originais e ferramentas de diagnóstico.
+O teste desktop usa somente demonstração, em janela oculta, e grava capturas e resultados em `artifacts/`. O empacotamento inclui `out`, `dist`, os PNG de ícone e o manifesto; exclui firmware, capturas, fontes originais e ferramentas de diagnóstico.
+
+O pacote também inclui os dois PNG locais da janela/bandeja. O `.ico` de nove tamanhos é incorporado aos recursos do executável. Distribuição e fluxo de publicação estão em [docs/publishing.md](docs/publishing.md).
 
 Os componentes e estilos em `src/renderer` podem ser editados e recompilados. Para acrescentar uma configuração, atualize o catálogo e o schema em `src/main/features`, mantenha a interface IPC restrita e adicione evidência do contrato e testes de validação. Não exponha uma função genérica de HTTP, IPC ou execução de código ao renderer.
 

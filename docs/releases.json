@@ -1,10 +1,10 @@
 {
-  "latest": "0.5.0",
+  "latest": "0.5.1",
   "platform": "win32-x64",
   "releases": [
     {
       "version": "0.3.0",
-      "file": "TendaWiFi-0.3.0.exe",
+      "file": "release/archive/0.3.0/TendaWiFi-0.3.0.exe",
       "bytes": 110646013,
       "sha256": "e3af9edda96f04fb04850a2e63e21454c30c0b387b1a24037931e6beee5ba3aa",
       "signed": false,
@@ -14,7 +14,7 @@
     },
     {
       "version": "0.4.0",
-      "file": "TendaWiFi-0.4.0.exe",
+      "file": "release/archive/0.4.0/TendaWiFi-0.4.0.exe",
       "bytes": 110681947,
       "sha256": "3d610d53c2bf1bf1be51c8f04065743cb1a144403a6692a28990cdf404edc796",
       "signed": false,
@@ -24,13 +24,22 @@
     },
     {
       "version": "0.5.0",
-      "file": "TendaWiFi-0.5.0.exe",
+      "file": "release/archive/0.5.0/TendaWiFi-0.5.0.exe",
       "bytes": 110666358,
       "sha256": "9e895e68d0f29407ba4d5db04c1a62bea8db29db9ddff4df391d3308903f5702",
       "signed": false,
       "desktopChecks": 28,
       "archiveEntries": 10,
       "fusesVerified": true
+    },
+    {
+      "version": "0.5.1",
+      "file": "TendaWiFi-0.5.1.exe",
+      "asset": "TendaWiFi-0.5.1-win-x64.exe",
+      "directory": "release/0.5.1/publish",
+      "bytes": 110613517,
+      "sha256": "bb0bca13de6019d7030f7bc2d83b693c9ae962fcdc2cfd40a84ff96895b72f12",
+      "signed": false
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "name": "tenda-wifi-desktop",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "Painel local para Tenda RX27 Pro",
   "author": "TendaWiFi local project",
@@ -12,12 +12,15 @@
     "build": "tsc --noEmit && vite build && node scripts/build-main.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "package": "npm run build && electron-builder --win portable --x64",
+    "package": "npm run build && electron-builder --win portable --x64 --publish never",
     "start": "electron .",
     "research": "node scripts/report-firmware.mjs",
     "test:desktop": "npm run build && node scripts/run-smoke.mjs",
     "diagnose:login": "node scripts/diagnose-login.mjs",
-    "diagnose:env": "node scripts/diagnose-env.mjs"
+    "diagnose:env": "node scripts/diagnose-env.mjs",
+    "build:icons": "node scripts/build-icons.mjs",
+    "release:prepare": "node scripts/prepare-release.mjs",
+    "release:publish": "node scripts/github-release.mjs --publish"
   },
   "dependencies": {
     "lucide-react": "0.577.0",
@@ -41,12 +44,14 @@
     "appId": "local.tendawifi.desktop",
     "productName": "Tenda WiFi Desktop",
     "directories": {
-      "output": "release"
+      "output": "release/${version}"
     },
     "files": [
       "out/main.cjs",
       "out/preload.cjs",
       "out/monitoring-worker.cjs",
+      "resources/icon.png",
+      "resources/tray.png",
       "dist/**/*",
       "package.json",
       "!node_modules/**/*"
@@ -62,7 +67,8 @@
           ]
         }
       ],
-      "signExecutable": false
+      "signExecutable": false,
+      "icon": "resources/icon.ico"
     },
     "portable": {
       "artifactName": "TendaWiFi-${version}-win-x64.exe",
@@ -76,6 +82,8 @@
       "onlyLoadAppFromAsar": true,
       "grantFileProtocolExtraPrivileges": false,
       "enableCookieEncryption": true
-    }
+    },
+    "artifactName": "TendaWiFi-${version}-win-${arch}.${ext}",
+    "copyright": "Tenda WiFi Desktop - projeto independente"
   }
 }

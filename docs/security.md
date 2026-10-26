@@ -40,3 +40,10 @@ As versões 0.3–0.5 acrescentam consultas de calendário limitadas a 24 meses,
 ## Validação
 
 Os testes usam senhas e respostas sintéticas. O simulador é um provedor em memória, sem conexão de rede. O teste desktop confirma isolamento, navegação, leitura do catálogo, revisão/cancelamento, whitelist IPC e ownership. Testes reais de escrita exigem um ambiente controlado e autorização específica; não são parte do desenvolvimento contra a rede de produção.
+
+
+## Distribuição e GitHub Releases
+
+Vetores considerados: inclusão acidental de credenciais/firmware nos assets, troca de binário após calcular SHA-256, tag apontando para outro código, substituição silenciosa de uma release e vazamento da autenticação em redirecionamentos/logs. O diretório de upload aceita quatro nomes fixos, arquivos regulares com tamanho limitado e hashes consistentes com o manifesto. O publisher verifica branch limpa, HEAD remoto e tag; publica primeiro como rascunho, valida digests do GitHub e recusa assets divergentes. Não reescreve tags nem substitui assets publicados.
+
+O credential helper do Git fornece autenticação somente em memória. Não há token em argumento de processo, arquivo, renderer ou relatório. Destinos autenticados são restritos a api.github.com e uploads.github.com, com repositório fixo e redirecionamentos bloqueados. Arquivamento local move apenas nomes de launchers antigos, dentro do projeto, e confere SHA-256 antes/depois; a configuração privada fica no lugar. Os ícones são recursos locais sem conteúdo executável. A ausência de certificado de editor permanece explícita.

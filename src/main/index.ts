@@ -86,7 +86,7 @@ function registerIPC() {
   });
 }
 async function createWindow() {
-  mainWindow = new BrowserWindow({ width: 1440, height: 960, minWidth: 980, minHeight: 680, show: false, backgroundColor: '#0b101b', title: 'Tenda WiFi Desktop', autoHideMenuBar: true, webPreferences: { preload: resolve(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true, allowRunningInsecureContent: false, devTools: !app.isPackaged, spellcheck: false } });
+  mainWindow = new BrowserWindow({ width: 1440, height: 960, minWidth: 980, minHeight: 680, show: false, backgroundColor: '#0b101b', title: 'Tenda WiFi Desktop', icon: resolve(__dirname, '../resources/icon.png'), autoHideMenuBar: true, webPreferences: { preload: resolve(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true, allowRunningInsecureContent: false, devTools: !app.isPackaged, spellcheck: false } });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-attach-webview', event => event.preventDefault());
   mainWindow.webContents.on('will-navigate', (event, destination) => { if (!destination.startsWith(`${allowedOrigin}/`) && destination !== allowedOrigin) event.preventDefault(); });
@@ -132,9 +132,9 @@ function updateTray() {
   tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir painel', click: showWindow }, { label: state.status === 'paused' ? 'Retomar coleta' : 'Pausar coleta', enabled: connected, click: () => { void monitoring.pause(state.status !== 'paused').catch(() => undefined); } }, { label: 'Silenciar alertas', type: 'checkbox', checked: state.settings.muted, enabled: connected, click: () => { void monitoring.saveSettings({ ...monitoring.snapshot().settings, muted: !monitoring.snapshot().settings.muted }).catch(() => undefined); } }, { type: 'separator' }, { label: 'Sair', click: () => { quitting = true; app.quit(); } }]));
 }
 function createTray() {
-  const pixels = Buffer.alloc(32 * 32 * 4);
-  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) { const i = (y * 32 + x) * 4, orange = x > 3 && x < 28 && y > 7 && y < 27; pixels[i] = orange ? 255 : 0; pixels[i + 1] = orange ? 133 : 0; pixels[i + 2] = orange ? 74 : 0; pixels[i + 3] = orange ? 255 : 0; if (orange && (y >= 18 && y <= 21 && x >= 8 && x <= 23 || x === 9 && y >= 11 && y <= 17 || x === 22 && y >= 11 && y <= 17)) { pixels[i] = 20; pixels[i + 1] = 27; pixels[i + 2] = 38; } }
-  tray = new Tray(nativeImage.createFromBitmap(pixels, { width: 32, height: 32, scaleFactor: 1 })); tray.on('double-click', showWindow); tray.on('balloon-click', showWindow); updateTray();
+  const icon = nativeImage.createFromPath(resolve(__dirname, '../resources/tray.png'));
+  if (icon.isEmpty()) throw new Error('Ícone da aplicação indisponível.');
+  tray = new Tray(icon); tray.on('double-click', showWindow); tray.on('balloon-click', showWindow); updateTray();
 }
 if (!app.requestSingleInstanceLock()) app.quit();
 else {

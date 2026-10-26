@@ -1,7 +1,9 @@
 {
-  "version": "0.5.0",
-  "file": "TendaWiFi-0.5.0.exe",
-  "bytes": 110666358,
-  "sha256": "9e895e68d0f29407ba4d5db04c1a62bea8db29db9ddff4df391d3308903f5702",
+  "version": "0.5.1",
+  "file": "TendaWiFi-0.5.1.exe",
+  "asset": "TendaWiFi-0.5.1-win-x64.exe",
+  "directory": "release/0.5.1/publish",
+  "bytes": 110613517,
+  "sha256": "bb0bca13de6019d7030f7bc2d83b693c9ae962fcdc2cfd40a84ff96895b72f12",
   "signed": false
 }

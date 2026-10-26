@@ -1,0 +1,13 @@
+import {afterEach,beforeEach,describe,expect,it,vi}from'vitest';
+const mocked=vi.hoisted(()=>({spawn:vi.fn(),fetch:vi.fn()}));
+vi.mock('node:child_process',()=>({spawnSync:mocked.spawn}));
+import{githubClient}from'../scripts/lib/github-api.mjs';
+beforeEach(()=>{vi.clearAllMocks();mocked.spawn.mockImplementation(()=>({status:0,stdout:'username=test\npassword=synthetic-release-token\n',stderr:''}));vi.stubGlobal('fetch',mocked.fetch);});
+afterEach(()=>vi.unstubAllGlobals());
+describe('GitHub release authentication boundary',()=>{
+ it('uses the fixed GitHub credential scope without an interactive prompt',()=>{githubClient();expect(mocked.spawn).toHaveBeenCalledWith('git',['credential','fill'],expect.objectContaining({input:'protocol=https\nhost=github.com\n\n',env:expect.objectContaining({GIT_TERMINAL_PROMPT:'0',GCM_INTERACTIVE:'Never'})}));});
+ it('denies another repository, host injection and path traversal before fetching',async()=>{const request=githubClient();for(const route of ['/repos/another/repository/releases','//evil.invalid/','/repos/ofelipeboaventura/TendaWiFi/../secrets','/repos/ofelipeboaventura/TendaWiFi/\r\n'])await expect(request(route)).rejects.toThrow('não autorizada');expect(mocked.fetch).not.toHaveBeenCalled();});
+ it('sends credentials only to fixed API origins and rejects redirects',async()=>{mocked.fetch.mockResolvedValue({ok:true,status:200,json:async()=>({ok:true})});const request=githubClient();await request('/repos/ofelipeboaventura/TendaWiFi/releases');await request('/repos/ofelipeboaventura/TendaWiFi/releases/1/assets?name=app.exe',{upload:true,method:'POST'});for(const [url,options]of mocked.fetch.mock.calls){expect(['https://api.github.com','https://uploads.github.com']).toContain(url.origin);expect(options.redirect).toBe('error');expect(options.headers.Authorization).toBe('Bearer synthetic-release-token');}});
+ it('does not expose helper output or server response bodies in errors',async()=>{mocked.spawn.mockReturnValueOnce({status:1,stdout:'secret-helper-output',stderr:'secret-stderr'});expect(()=>githubClient()).toThrow('Autenticação local do GitHub indisponível.');mocked.fetch.mockResolvedValue({ok:false,status:403,json:async()=>({message:'secret-server-payload'})});await expect(githubClient()('/repos/ofelipeboaventura/TendaWiFi/releases')).rejects.toThrow('GitHub GET falhou (HTTP 403).');});
+ it('allows an expected absent tag without parsing arbitrary error bodies',async()=>{mocked.fetch.mockResolvedValue({ok:false,status:404});await expect(githubClient()('/repos/ofelipeboaventura/TendaWiFi/releases/tags/v0.5.1',{allow404:true})).resolves.toBeNull();});
+});
