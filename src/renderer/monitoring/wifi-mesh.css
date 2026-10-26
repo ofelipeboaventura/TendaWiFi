@@ -1,0 +1,86 @@
+.wifi-mesh-page{min-width:0;color:#dce6f3;--wm-muted:#91a4be;--wm-line:#2d394b}
+.wifi-mesh-page *{box-sizing:border-box}
+.wifi-mesh-page .wm-value{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:550;letter-spacing:0}
+.wifi-mesh-page .download{color:#ffa16c}.wifi-mesh-page .upload{color:#91b7ff}.wifi-mesh-page .green{color:#7bd5b3}.wifi-mesh-page .purple{color:#c1a0e7}
+.wifi-mesh-page .wm-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.wifi-mesh-page .wm-summary-card{padding:18px 20px;min-width:0}
+.wifi-mesh-page .wm-summary-card>div{display:flex;align-items:center;gap:10px;min-height:33px}
+.wifi-mesh-page .wm-summary-card h2{font-size:11px;line-height:1.5;font-weight:500;color:#b9c9df}
+.wifi-mesh-page .wm-summary-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#283344;flex-shrink:0}
+.wifi-mesh-page .wm-summary-card>strong{display:block;font-size:26px;margin:16px 0 10px;line-height:1.2}
+.wifi-mesh-page .wm-summary-card>p{font-size:10px;line-height:1.6;color:var(--wm-muted)}
+.wifi-mesh-page .wm-scope{font-size:11px;line-height:1.8;color:var(--wm-muted);margin:12px 0 20px}
+.wifi-mesh-page .wm-exclusions{font-size:11px;line-height:1.8;color:#efc68e;border:1px solid #72583c;background:#382e234d;padding:10px 14px;border-radius:8px;margin:0 0 20px}
+.wifi-mesh-page .wm-section{margin-bottom:20px;min-width:0}
+.wifi-mesh-page .wm-section>.card-heading{padding:20px 22px}
+.wifi-mesh-page .wm-radios{padding:0 20px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:14px}
+.wifi-mesh-page .wm-radio{background:#141e2c;border:1px solid var(--wm-line);border-radius:10px;padding:16px;min-width:0}
+.wifi-mesh-page .wm-radio>header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.wifi-mesh-page .wm-radio-band{display:flex;gap:8px;align-items:center;color:#dbe8fa;font-size:13px;font-weight:600}
+.wifi-mesh-page .wm-radio-band>svg{color:#96b5e3}
+.wifi-mesh-page .wm-radio-current{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:15px;padding:20px 0 17px;border-bottom:1px solid var(--wm-line)}
+.wifi-mesh-page .wm-radio-current span{display:block;font-size:10px;color:var(--wm-muted);margin-bottom:8px}
+.wifi-mesh-page .wm-radio-current strong{font-size:20px;line-height:1.4;font-weight:600;font-variant-numeric:tabular-nums}
+.wifi-mesh-page .wm-radio-config{margin:14px 0}
+.wifi-mesh-page .wm-radio-config>div{display:flex;gap:16px;justify-content:space-between;margin:9px 0;font-size:11px;line-height:1.5}
+.wifi-mesh-page .wm-radio-config dt{color:var(--wm-muted)}
+.wifi-mesh-page .wm-radio-config dd{margin:0;text-align:right}
+.wifi-mesh-page .wm-radio>footer{display:flex;gap:6px;align-items:center;font-size:10px;color:#8296b1;line-height:1.6;flex-wrap:wrap}
+.wifi-mesh-page .wm-badge{display:inline-flex;align-items:center;border:1px solid transparent;border-radius:5px;padding:4px 7px;font-size:10px;line-height:1.4;white-space:nowrap;font-weight:500}
+.wifi-mesh-page .wm-badge.good{background:#23433966;border-color:#386b5555;color:#83dab6}
+.wifi-mesh-page .wm-badge.warning{background:#49382366;border-color:#8c623a66;color:#f7c58c}
+.wifi-mesh-page .wm-badge.muted{background:#26344988;border-color:#3b4c6255;color:#b3c5df}
+.wifi-mesh-page .wm-table-scroll{position:relative;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#506078 transparent}
+.wifi-mesh-page .wm-table{width:100%;border-collapse:collapse;table-layout:fixed;text-align:left}
+.wifi-mesh-page .wm-node-table{min-width:1000px}
+.wifi-mesh-page .wm-table>thead>tr>th{background:#131d2a;color:#91a5c1;font-size:10px;line-height:1.5;font-weight:550;border-top:1px solid var(--wm-line);border-bottom:1px solid var(--wm-line);padding:13px 12px;vertical-align:middle}
+.wifi-mesh-page .wm-table>tbody>tr>td,.wifi-mesh-page .wm-table>tbody>tr>th{padding:17px 12px;border-bottom:1px solid #2a3546;vertical-align:middle;font-size:12px;line-height:1.5;font-weight:400}
+.wifi-mesh-page .wm-table>tbody>tr>th{text-align:left}
+.wifi-mesh-page .wm-table .wm-numeric{text-align:right}
+.wifi-mesh-page .wm-table small{display:block;color:var(--wm-muted);font-size:10px;font-weight:400;margin-top:5px;line-height:1.6}
+.wifi-mesh-page .wm-node-name-col{width:20%}.wifi-mesh-page .wm-status-col{width:9%}.wifi-mesh-page .wm-parent-col{width:15%}.wifi-mesh-page .wm-count-col{width:7%}.wifi-mesh-page .wm-rate-col{width:12%}.wifi-mesh-page .wm-quality-col{width:12%}.wifi-mesh-page .wm-action-col{width:13%}
+.wifi-mesh-page .wm-node-row:hover{background:#1d293944}.wifi-mesh-page .wm-node-row.selected{background:#23304477}
+.wifi-mesh-page .wm-name{display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#dce7f7;font-weight:550}
+.wifi-mesh-page .wm-name:hover,.wifi-mesh-page .wm-name:focus{white-space:normal;overflow-wrap:anywhere}
+.wifi-mesh-page .wm-name:focus-visible,.wifi-mesh-page .wm-table-scroll:focus-visible,.wifi-mesh-page button:focus-visible,.wifi-mesh-page input:focus-visible,.wifi-mesh-page select:focus-visible{outline:2px solid #ff9d66;outline-offset:3px}
+.wifi-mesh-page .wm-status{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:11px}
+.wifi-mesh-page .wm-status.online{color:#8bd8ba}.wifi-mesh-page .wm-status.offline{color:#a3afc1}.wifi-mesh-page .wm-status .status-dot{margin:0;flex-shrink:0}
+.wifi-mesh-page .wm-expand{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:7px 8px;border:1px solid #40516a;border-radius:7px;background:#243247;color:#d8e6fa;font:inherit;font-size:10px;white-space:nowrap;cursor:pointer}
+.wifi-mesh-page .wm-expand:hover{border-color:#b37c55;color:#ffb180}.wifi-mesh-page .wm-expand[aria-expanded=true]{color:#ffae7c;border-color:#936242;background:#3d2f2766}.wifi-mesh-page .wm-expand[aria-expanded=true]>svg{transform:rotate(180deg)}
+.wifi-mesh-page .wm-expansion-row[hidden]{display:none}.wifi-mesh-page .wm-table .wm-expansion-row>td{padding:0;background:#121d2b}
+.wifi-mesh-page .wm-node-details{padding:23px}
+.wifi-mesh-page .wm-node-details>header{display:flex;gap:11px;align-items:flex-start;color:#ffa16c;margin-bottom:20px}
+.wifi-mesh-page .wm-node-details h3{font-size:15px;font-weight:600;color:#e2ebf8;line-height:1.6;overflow-wrap:anywhere}
+.wifi-mesh-page .wm-node-details>header p{color:var(--wm-muted);font-size:11px;line-height:1.6;margin-top:2px}
+.wifi-mesh-page .wm-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 25px;margin:0 0 13px}
+.wifi-mesh-page .wm-detail-grid>div{padding:12px 0;border-bottom:1px solid var(--wm-line)}
+.wifi-mesh-page .wm-detail-grid dt{font-size:11px;color:var(--wm-muted);margin-bottom:7px;line-height:1.5}
+.wifi-mesh-page .wm-detail-grid dd{font-size:13px;line-height:1.6;margin:0;overflow-wrap:break-word}
+.wifi-mesh-page .wm-footnote{font-size:10px;line-height:1.8;color:var(--wm-muted);margin:0}
+.wifi-mesh-page .wm-table-note{padding:15px 22px}
+.wifi-mesh-page .wm-clients{margin-top:24px;padding-top:22px;border-top:1px solid #3b475a;min-width:0}
+.wifi-mesh-page .wm-clients-heading{margin-bottom:16px}.wifi-mesh-page .wm-clients h4{font-size:13px;line-height:1.6;font-weight:550}.wifi-mesh-page .wm-clients h4>span{font-size:11px;display:inline-block;border-radius:5px;background:#2a3a50;padding:1px 6px;margin-left:7px;color:#adbfdb}
+.wifi-mesh-page .wm-clients-heading p{font-size:10px;color:var(--wm-muted);margin-top:4px;line-height:1.7}
+.wifi-mesh-page .wm-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.wifi-mesh-page .wm-filters>label>span{display:block;font-size:10px;color:var(--wm-muted);margin-bottom:6px}
+.wifi-mesh-page .wm-search{display:flex;align-items:center;gap:9px;background:#162336;border:1px solid #3c4b63;border-radius:7px;padding:0 11px;min-width:200px;max-width:380px;flex:1;color:#9cb3d2}
+.wifi-mesh-page .wm-search input{width:100%;min-width:0;border:0;background:transparent;font:inherit;color:#e1eafa;padding:10px 0;font-size:11px;outline:none}
+.wifi-mesh-page .wm-search:focus-within{border-color:#e99c69}
+.wifi-mesh-page .wm-filters select{background:#162336;border:1px solid #3c4b63;border-radius:7px;padding:9px 28px 9px 10px;font:inherit;font-size:11px;color:#dce7f7;min-height:36px;max-width:220px}
+.wifi-mesh-page .wm-client-table{min-width:870px;border:1px solid var(--wm-line);background:#172334}
+.wifi-mesh-page .wm-client-name-col{width:31%}.wifi-mesh-page .wm-client-connection-col{width:13%}.wifi-mesh-page .wm-negotiated-col{width:16%}.wifi-mesh-page .wm-rssi-col{width:13%}
+.wifi-mesh-page .wm-client-table tbody tr:hover{background:#233148}
+.wifi-mesh-page .wm-client-address{overflow-wrap:anywhere;line-height:1.6}
+.wifi-mesh-page .wm-pagination{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:14px 0;font-size:10px;line-height:1.6;color:var(--wm-muted);flex-wrap:wrap}
+.wifi-mesh-page .wm-pagination>div{display:flex;gap:8px}
+.wifi-mesh-page .wm-empty{padding:18px 22px;font-size:12px;line-height:1.8;color:#9bafca}
+.wifi-mesh-page .wm-clients>.wm-empty{padding:10px 0 18px}
+.wifi-mesh-page .wm-history ol{list-style:none;padding:0 22px 10px;margin:0}
+.wifi-mesh-page .wm-history li{display:grid;grid-template-columns:170px minmax(0,1fr);gap:16px;border-bottom:1px solid var(--wm-line);padding:13px 0;font-size:12px;line-height:1.7}
+.wifi-mesh-page .wm-history time{color:var(--wm-muted);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.wifi-mesh-page .wm-history li>span{overflow-wrap:anywhere}
+.wifi-mesh-page .wm-history>.wm-footnote{padding:0 22px 18px}
+.wifi-mesh-page .wm-history-error{margin:0 22px 18px;border:1px solid #79603e;background:#49392144;color:#f1c78f;padding:12px;border-radius:7px;font-size:11px;line-height:1.7}
+.wifi-mesh-page .wm-sr-only{position:absolute;left:0;top:0;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:1100px){.wifi-mesh-page .wm-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.wifi-mesh-page .wm-summary-card>strong{font-size:24px}.wifi-mesh-page .wm-section>.card-heading{padding:18px}.wifi-mesh-page .wm-radios{padding:0 17px 17px}.wifi-mesh-page .wm-history li{grid-template-columns:1fr;gap:4px}}
+@media(prefers-reduced-motion:reduce){.wifi-mesh-page *{scroll-behavior:auto}}

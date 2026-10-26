@@ -44,6 +44,8 @@ Os testes usam senhas e respostas sintéticas. O simulador é um provedor em mem
 
 ## Distribuição e GitHub Releases
 
+Na visualização Wi-Fi/Mesh 0.5.2, nomes de dispositivos/nós, endereços e demais campos permanecem texto React, sem HTML dinâmico. Filtros e expansão não recebem destinos de rede, comandos ou operações de manutenção, e não expõem novos canais IPC. A seleção local de um nó não constitui autorização para ações de backend. A fixture de teste contém payloads maliciosos sintéticos e fica fora do pacote. Históricos com falha ou campos ausentes não são convertidos em métricas zero; associações ambíguas não duplicam tráfego.
+
 Vetores considerados: inclusão acidental de credenciais/firmware nos assets, troca de binário após calcular SHA-256, tag apontando para outro código, substituição silenciosa de uma release e vazamento da autenticação em redirecionamentos/logs. O diretório de upload aceita quatro nomes fixos, arquivos regulares com tamanho limitado e hashes consistentes com o manifesto. O publisher verifica branch limpa, HEAD remoto e tag; publica primeiro como rascunho, valida digests do GitHub e recusa assets divergentes. Não reescreve tags nem substitui assets publicados.
 
 O credential helper do Git fornece autenticação somente em memória. Não há token em argumento de processo, arquivo, renderer ou relatório. Destinos autenticados são restritos a api.github.com e uploads.github.com, com repositório fixo e redirecionamentos bloqueados. Arquivamento local move apenas nomes de launchers antigos, dentro do projeto, e confere SHA-256 antes/depois; a configuração privada fica no lugar. Os ícones são recursos locais sem conteúdo executável. A ausência de certificado de editor permanece explícita.

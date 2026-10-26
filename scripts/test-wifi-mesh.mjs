@@ -1,0 +1,10 @@
+import fs from'node:fs';
+import path from'node:path';
+import {spawn}from'node:child_process';
+import {build}from'esbuild';
+import electron from'electron';
+const directory=path.resolve('artifacts/wifi-mesh');fs.mkdirSync(directory,{recursive:true});
+await build({entryPoints:['scripts/wifi-mesh-fixture.tsx'],bundle:true,platform:'browser',format:'iife',outfile:path.join(directory,'fixture.js'),define:{'process.env.NODE_ENV':'"production"'},jsx:'automatic'});
+fs.writeFileSync(path.join(directory,'fixture.html'),'<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data:; connect-src \'none\'"><link rel="stylesheet" href="fixture.css"></head><body><div id="root"></div><script src="fixture.js"></script></body></html>');
+const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;delete env.TENDA_ROUTER_PASSWORD;
+const child=spawn(electron,['scripts/wifi-mesh-electron.cjs'],{env,windowsHide:true,stdio:'inherit'});child.on('error',()=>{process.exitCode=1;});child.on('exit',code=>process.exit(code??1));

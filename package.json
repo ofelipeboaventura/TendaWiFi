@@ -1,6 +1,6 @@
 {
   "name": "tenda-wifi-desktop",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "description": "Painel local para Tenda RX27 Pro",
   "author": "TendaWiFi local project",
