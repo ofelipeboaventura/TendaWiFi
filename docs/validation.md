@@ -1,6 +1,6 @@
 # Validação das versões
 
-## Wi-Fi/Mesh 0.5.2 — distribuição local, 26/10/2026
+## Wi-Fi/Mesh 0.5.2 — 26/10/2026
 
 - **247 testes em 15 arquivos aprovados**. Os cenários novos cobrem deduplicação, roaming ambíguo, clientes sem nó, estados offline, ordenação estável, separação entre taxa negociada e tráfego, ausência versus zero, qualidade do controlador/Ethernet, configuração automática versus estado atual e nomes com conteúdo malicioso renderizados como texto.
 - **TypeScript e build de produção aprovados**. Nenhum endpoint, coletor, schema persistido ou cadência do roteador foi alterado. Busca, filtros, ordenação, paginação e expansão ficam no renderer; a consulta de histórico preserva a cadência de 30 segundos e impede sobreposição.
@@ -8,7 +8,7 @@
 - **Fixture sintética específica aprovada** com teclado/foco, nomes longos, RSSI e ping zero, busca por IP, filtro de conexão, 25 clientes paginados, preservação da seleção/filtros durante atualizações, colunas sem alteração de largura, consulta sem chamadas extras, nós offline e falha de histórico distinta de ausência de eventos. Não conecta ao roteador nem utiliza credenciais.
 - **12 combinações de layout aprovadas:** larguras de 980/1280/1440/1920 pixels com zoom da interface em 100/125/150%. Sem excesso horizontal na página; somente tabelas têm rolagem interna quando necessária. Foco emulado pelo protocolo do Chromium permite verificar CSS de foco em janela oculta. A configuração global de DPI do Windows não foi alterada. Resultado e capturas: `artifacts/wifi-mesh/result.json` e PNGs no mesmo diretório. Reprodução: `node scripts/test-wifi-mesh.mjs`.
 - **Portátil final aprovado sem Node no PATH e sem administrador:** seis amostras reais, três níveis de agregados, SQLite válido, sem erro de processo. O primeiro lançamento não confirmou a coleta no prazo de 30 segundos; a repetição isolada passou. O diagnóstico ativo permaneceu desativado, e a validação não alterou configurações do roteador.
-- **Pacote inspecionado:** 13 entradas no ASAR, build correspondente, ícones de nove tamanhos, versão 0.5.2, execução `asInvoker` e fuses preservados. Firmware original e portátil 0.5.1 mantêm seus SHA-256 anteriores. As fontes e metadados da 0.5.2 ficam locais, sem commit, tag, push ou Release no GitHub.
+- **Pacote inspecionado:** 13 entradas no ASAR, build correspondente, ícones de nove tamanhos, versão 0.5.2, execução `asInvoker` e fuses preservados. Firmware original e portátil 0.5.1 mantêm seus SHA-256 anteriores. A versão foi entregue inicialmente de forma local; a publicação posterior em GitHub Releases utiliza o mesmo executável, sem recompilação, com SHA-256 `02a449031b8a12a790622739a31df44bd529b35c6a928bcf69d40fca940d9de0`. Os quatro assets têm tamanho e digest remoto conferidos pelo publisher.
 
 ## Distribuição 0.5.1 — 26/10/2026
 

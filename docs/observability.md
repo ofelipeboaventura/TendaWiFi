@@ -1,10 +1,10 @@
 # Central de monitoramento
 
-## Visualização Wi-Fi/Mesh — 0.5.2 local
+## Visualização Wi-Fi/Mesh — 0.5.2
 
 A aba reúne resumo, rádios, tabela comparativa dos nós, detalhes expansíveis e histórico de hoje. As somas usam clientes online, com MAC única e nó conhecido; roaming ambíguo e associações desconhecidas aparecem separadamente. A taxa negociada permanece distinta do tráfego; RSSI é bruto, inclusive o valor zero. A qualidade do controlador e de conexões Ethernet não é apresentada como uma medição de backhaul.
 
-Busca, filtros, ordenação, paginação e expansão são locais. Atualizações preservam seleção e filtros sem mudar larguras das colunas. O histórico usa o comando existente a cada 30 segundos, sem sobreposição, somente com a aba montada e documento visível. Retorno ao primeiro plano pode sincronizar se o intervalo já venceu. Falhas preservam resultados anteriores e não são descritas como ausência de eventos. Não há novos endpoints nem migrações. O executável 0.5.2 é uma entrega local, sem nova publicação no GitHub.
+Busca, filtros, ordenação, paginação e expansão são locais. Atualizações preservam seleção e filtros sem mudar larguras das colunas. O histórico usa o comando existente a cada 30 segundos, sem sobreposição, somente com a aba montada e documento visível. Retorno ao primeiro plano pode sincronizar se o intervalo já venceu. Falhas preservam resultados anteriores e não são descritas como ausência de eventos. Não há novos endpoints nem migrações. A distribuição está na [Release 0.5.2](https://github.com/ofelipeboaventura/TendaWiFi/releases/tag/v0.5.2); o executável preserva o conteúdo da entrega local validada.
 
 ## 0.3.0 — consumo e inventário
 
