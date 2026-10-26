@@ -64,7 +64,7 @@ export function normalizeClients(data: Record<string, unknown>): ClientDevice[] 
     if (seen.has(id)) return;
     seen.add(id);
     const limited = enabled(client.controlEn);
-    result.push({ id, mac, name: text(client.hostname, 'Dispositivo'), ip: text(client.ip), nodeId, nodeName: text(node.nodeName),
+    result.push({ id, mac, negotiatedMbps: Number.isFinite(Number(client.deviceRate)) && Number(client.deviceRate)>0 && Number(client.deviceRate)<=1e6 ? Number(client.deviceRate) : null, rssi: typeof client.rssi==='string' ? client.rssi.slice(0,32) : null, name: text(client.hostname, 'Dispositivo'), ip: text(client.ip), nodeId, nodeName: text(node.nodeName),
       online, guest, blocked: blocked.has(mac), local: mac === local,
       connection: text(client.connectType, online ? 'wire' : 'offline'),
       upload: number(client.upSpeed) * 1024, download: number(client.downSpeed) * 1024,

@@ -1,3 +1,4 @@
+import type { ObservabilityCommands } from './observability';
 import type { MonitoringCommands } from './monitoring';
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -6,7 +7,7 @@ export type ErrorCode = 'VALIDATION' | 'AUTH' | 'LOCKED' | 'OFFLINE' | 'TIMEOUT'
 export type Result<T> = { ok: true; data: T } | { ok: false; error: { code: ErrorCode; message: string } };
 export interface ConnectionStatus { connected: boolean; demo: boolean; host: string; model: string; firmware: string; hardware: string; mode: string; capabilities: string[] }
 export interface MeshNode { id: string; name: string; model: string; ip: string; parentId: string | null; online: boolean; primary: boolean; clients: number; quality: string; band: string }
-export interface ClientDevice { id: string; mac: string; name: string; ip: string; nodeId: string; nodeName: string; online: boolean; guest: boolean; blocked: boolean; local: boolean; connection: string; upload: number; download: number; uploadLimit: number; downloadLimit: number; uptime: number }
+export interface ClientDevice { ambiguous?: boolean; negotiatedMbps?: number | null; rssi?: string | null; id: string; mac: string; name: string; ip: string; nodeId: string; nodeName: string; online: boolean; guest: boolean; blocked: boolean; local: boolean; connection: string; upload: number; download: number; uploadLimit: number; downloadLimit: number; uptime: number }
 export interface Overview { internet: boolean; wanIp: string; connectionType: string; upload: number; download: number; uptime: number; clientCount: number; nodeCount: number; wifiNames: string[]; nodes: MeshNode[]; sampledAt: string; model: string; firmware: string; mode: string }
 export type FieldKind = 'text' | 'password' | 'number' | 'switch' | 'select' | 'textarea';
 export interface FieldDefinition { key: string; label: string; type: FieldKind; description?: string; placeholder?: string; options?: { label: string; value: string }[]; min?: number; max?: number; required?: boolean; section?: string; readonly?: boolean }
@@ -35,7 +36,7 @@ export function withMaintenanceTarget(input: ActionRequest, selectedNodeId?: str
   }
 }
 export interface ClientChange { mac: string; nodeId: string; name?: string; blocked?: boolean; uploadLimit?: number; downloadLimit?: number }
-export interface DesktopAPI extends MonitoringCommands {
+export interface DesktopAPI extends MonitoringCommands, ObservabilityCommands {
   connect(input: { host: string; password: string }): Promise<Result<ConnectionStatus>>;
   demo(): Promise<Result<ConnectionStatus>>;
   disconnect(): Promise<Result<void>>;

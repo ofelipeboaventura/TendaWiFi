@@ -14,6 +14,7 @@ const target=path.resolve(targetName);
 try{await fs.copyFile(source,target,constants.COPYFILE_EXCL);}catch(error){if(error.code!=='EEXIST')throw error;const existing=createHash('sha256');for await(const chunk of createReadStream(target))existing.update(chunk);if(existing.digest('hex')!==digest)throw Error('TendaWiFi.exe já existe com outro conteúdo; ele foi preservado.');}
 await fs.writeFile(path.join(path.dirname(source),'SHA256SUMS.txt'),`${digest}  ${path.basename(source)}\n`);
 await fs.writeFile('SHA256SUMS.txt',`${digest}  ${targetName}\n`);
-const report={version:pkg.version,file:targetName,bytes:(await fs.stat(target)).size,sha256:digest,signed:false};
+const deliveryVersion=path.basename(source).match(/^TendaWiFi-(\d+\.\d+\.\d+)-win-x64\.exe$/)?.[1]??pkg.version;
+const report={version:deliveryVersion,file:targetName,bytes:(await fs.stat(target)).size,sha256:digest,signed:false};
 await fs.writeFile('docs/release.json',JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify(report,null,2));

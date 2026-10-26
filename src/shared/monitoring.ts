@@ -1,13 +1,15 @@
 import type { ClientDevice, MeshNode, Overview } from './types';
 
-export const monitoringPeriods = ['5m', '15m', '1h', '24h', '7d', '30d'] as const;
+export const monitoringPeriods = ['1m', '5m', '15m', '1h', '24h', '7d', '30d'] as const;
 export type MonitoringPeriod = typeof monitoringPeriods[number];
 export interface MonitorSettings {
+  anomalyAlerts:boolean; newDeviceAlerts: boolean; nodeAlerts: boolean;
+  pollIntervalMs: 1000|2000|3000|5000; estimateConsumption: boolean;
   resourceDiagnosticsEnabled: boolean;
   downloadMbps: number | null; uploadMbps: number | null; alerts: boolean; muted: boolean;
   latencyMs: number; lossPercent: number; cpuPercent: number; memoryPercent: number; saturationPercent: number;
 }
-export const defaultMonitorSettings: MonitorSettings = { resourceDiagnosticsEnabled: true, downloadMbps: null, uploadMbps: null, alerts: true, muted: false, latencyMs: 100, lossPercent: 5, cpuPercent: 80, memoryPercent: 90, saturationPercent: 90 };
+export const defaultMonitorSettings: MonitorSettings = { anomalyAlerts:true,newDeviceAlerts:true,nodeAlerts:true,pollIntervalMs: 1000, estimateConsumption: true, resourceDiagnosticsEnabled: true, downloadMbps: null, uploadMbps: null, alerts: true, muted: false, latencyMs: 100, lossPercent: 5, cpuPercent: 80, memoryPercent: 90, saturationPercent: 90 };
 export interface RealCounter { id: string; scope: 'internet' | 'device'; epoch: string; upload: string; download: string }
 export interface CounterDelta { id: string; scope: 'internet' | 'device'; upload: string; download: string }
 export interface ResourceReading { nodeId: string; cpu: number | null; memory: number | null; source: 'diagnostic'; sampledAt: number | null; current: boolean }
@@ -18,12 +20,12 @@ export const RESOURCE_STALE_MS = 360000;
 export const TRAFFIC_GAP_MS = 3500;
 export const PROBE_GAP_MS = 12500;
 export interface ChartSample { at: number; value: number | null; breakBefore: boolean }
-export interface ChartFrame { epoch: string; sequence: number; at: number; point?: MonitorPoint; devices?: { mac: string; upload: number; download: number; online: boolean }[]; probes?: ProbeSample[]; resources?: ResourceSample[]; deltas?: CounterDelta[]; topologyUpdated?: boolean; resourcesUpdated?: boolean }
+export interface ChartFrame { volumes?: import('./observability').VolumeSlice[]; epoch: string; sequence: number; at: number; point?: MonitorPoint; devices?: { mac: string; upload: number; download: number; online: boolean }[]; probes?: ProbeSample[]; resources?: ResourceSample[]; deltas?: CounterDelta[]; topologyUpdated?: boolean; resourcesUpdated?: boolean }
 export interface ChartHistory { epoch: string; sequence: number; latency: ChartSample[]; probes?: ProbeSample[]; deltas?: { at: number; values: CounterDelta[] }[] }
 export interface ProbeSample { target: string; at: number; latency: number | null; status: 'success' | 'timeout' | 'error'; breakBefore?: boolean }
 export interface QualityMetric { target: string; samples: number; received: number; mean: number | null; p95: number | null; jitter: number | null; loss: number | null; lastAt: number | null; lastLatency: number | null }
 export interface MonitorEvent { id: string; at: number; category: 'connection' | 'quality' | 'resources' | 'collector' | 'storage'; severity: 'info' | 'warning' | 'critical'; state: 'opened' | 'resolved' | 'info'; message: string; target?: string; durationMs?: number }
-export interface MonitorReading { overview: Overview; clients: ClientDevice[]; nodes: MeshNode[]; resources: ResourceReading[]; diagnostic?: DiagnosticStatus; resourceSample?: ResourceSample; counters: RealCounter[]; routerId: string }
+export interface MonitorReading { radios?:RadioReading[]; overview: Overview; clients: ClientDevice[]; nodes: MeshNode[]; resources: ResourceReading[]; diagnostic?: DiagnosticStatus; resourceSample?: ResourceSample; counters: RealCounter[]; routerId: string }
 export interface MonitorPoint { at: number; upload: number; download: number; online: boolean; uptime: number; cpu: number | null; memory: number | null; latency: number | null; breakBefore?: boolean }
 export interface DeviceHistory { mac: string; name: string; samples: number; meanUpload: number; meanDownload: number; peakUpload: number; peakDownload: number; uploadBytes: string | null; downloadBytes: string | null; scope: 'internet' | 'device' | null }
 export interface MonitoringHistory {
@@ -35,6 +37,9 @@ export interface MonitoringHistory {
   storage: { healthy: boolean; message: string; earliestAt: number | null; bytes: number };
 }
 export interface MonitoringState {
+  intelligence?: import('./observability').TrafficBaseline; bottlenecks?: import('./observability').BottleneckInsight[];
+  radios?: RadioReading[]; extraQuality?: ExtraQualitySample[]; nodeHealth?: NodeHealth[];
+  trafficWindows?: { minute: { upload:number;download:number }; fiveMinutes: { upload:number;download:number } };
   diagnostic?: DiagnosticStatus;
   demo?: boolean;
   revision?: number;
@@ -43,6 +48,9 @@ export interface MonitoringState {
   overview: Overview | null; clients: ClientDevice[]; nodes: MeshNode[]; resources: ResourceReading[]; quality: QualityMetric[]; recentEvents: MonitorEvent[];
   consumptionSupported: boolean; storage: MonitoringHistory['storage']; probeAvailable: boolean;
 }
+export interface RadioReading { band:'2.4 GHz'|'5 GHz'|'6 GHz'; sampledAt:number; configuredChannel:string|null; currentChannel:string|null; configuredBandwidth:string|null; currentBandwidth:string|null }
+export interface ExtraQualitySample { kind:'dns'|'node'; target:string; at:number; latency:number|null; status:'success'|'timeout'|'error' }
+export interface NodeHealth { id:string; firstAt:number; lastAt:number; onlineSince:number|null; observedOnlineMs:number; changes:number }
 export interface MonitorQuery { period: MonitoringPeriod; deviceMac?: string }
 export interface MonitorExport extends MonitorQuery { kind: 'traffic' | 'devices' | 'events' | 'quality' | 'resources' }
 export interface MonitoringCommands {

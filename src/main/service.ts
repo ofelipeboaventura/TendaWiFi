@@ -40,7 +40,7 @@ export class AppService {
   private diagnostics: ResourceDiagnostics;
   private telemetryRaw: Record<string, unknown> = {};
   private telemetryResources: ResourceReading[] = [];
-  private telemetryMetadataAt = 0;
+  private telemetryMetadataAt = 0; private radios:import('../shared/monitoring').RadioReading[]=[];
   private demoEpoch = Date.now();
   private router: ManagedRouter;
   private featuresService: FeatureService;
@@ -66,7 +66,7 @@ export class AppService {
   suspendResourceDiagnostics() { this.diagnostics.invalidate(); }
   private audit(action: string, outcome: string) { this.entries.push({ time: new Date().toISOString(), action, outcome }); if (this.entries.length > 500) this.entries.shift(); }
   private exclusive<T>(fn: () => Promise<T>): Promise<T> { const next = this.serial.then(fn, fn); this.serial = next.then(() => undefined, () => undefined); return next; }
-  private invalidate() { this.diagnostics.invalidate(true); this.session++; this.telemetryRaw = {}; this.telemetryResources = []; this.telemetryMetadataAt = 0; this.demoEpoch = Date.now(); this.scannedAt = 0; this.uncertain = false; this.pending.clear(); this.files.clear(); this.featuresService.clear(); this.featuresService = new FeatureService(this.router); }
+  private invalidate() { this.diagnostics.invalidate(true); this.session++; this.telemetryRaw = {}; this.radios=[]; this.telemetryResources = []; this.telemetryMetadataAt = 0; this.demoEpoch = Date.now(); this.scannedAt = 0; this.uncertain = false; this.pending.clear(); this.files.clear(); this.featuresService.clear(); this.featuresService = new FeatureService(this.router); }
   private requireConnection() { if (!this.router.getConnection().connected) throw new AppError('AUTH', 'Conecte-se ao roteador para continuar.'); }
   private requireWritable() { this.requireConnection(); if (this.uncertain) throw new AppError('UNCERTAIN', 'Uma operação anterior ainda precisa ser verificada. Atualize a visão geral ou entre novamente antes de revisar outra alteração.'); const s = this.router.getConnection(); if (!s.demo && (!/RX27[_\s-]*PRO/i.test(s.model) || !/^V?16\.03\.28\.20(?:_|\(|$)/i.test(s.firmware))) throw new AppError('UNSUPPORTED', 'Esta versão do equipamento ainda não foi validada para alterações. As consultas permanecem disponíveis.'); }
   connection() { return this.router.getConnection(); }
@@ -83,16 +83,16 @@ export class AppService {
   private async readCurrent<T>(reader: (router: ManagedRouter) => Promise<T>): Promise<T> { this.requireConnection(); const session = this.session, router = this.router; const result = await reader(router); if (this.session !== session || this.router !== router) throw new AppError('AUTH', 'A sessão mudou durante a consulta. Entre novamente.'); return result; }
   async clients() { return this.readCurrent(router => router.clients()); }
   async mesh() { return this.readCurrent(router => router.mesh()); }
-  async readMonitoring(topology: boolean, resources: boolean): Promise<MonitorReading> {
+  async readMonitoring(topology: boolean, resources: boolean, radio = false): Promise<MonitorReading> {
     const telemetrySession = this.session;
     return this.readCurrent(async router => {
       const connection = router.getConnection();
       if (connection.demo) {
         const overview = await router.overview(), clients = deduplicateClients(await router.clients()), nodes = await router.mesh(), at = Date.now(), seconds = Math.floor((at - this.demoEpoch) / 1000);
-        return { overview, clients, nodes, routerId: 'demo', resources: this.diagnostics.reading(), diagnostic: this.diagnostics.snapshot(), resourceSample: this.diagnostics.latestSample(), counters: [{ id: 'wan', scope: 'internet', epoch: String(this.demoEpoch), upload: (BigInt(seconds) * 1200000n).toString(), download: (BigInt(seconds) * 9000000n).toString() }, ...clients.filter(d => d.online).map((d, i) => ({ id: d.mac, scope: 'device' as const, epoch: String(this.demoEpoch), upload: (BigInt(seconds) * BigInt((i + 1) * 2000)).toString(), download: (BigInt(seconds) * BigInt((i + 1) * 30000)).toString() }))] };
+        return { overview, clients, nodes, routerId: 'demo', radios: (['2.4 GHz','5 GHz','6 GHz'] as const).map((band,i)=>({band,sampledAt:at,configuredChannel:'auto',currentChannel:String([6,36,37][i]),configuredBandwidth:'auto',currentBandwidth:String([20,80,160][i])})),resources: this.diagnostics.reading(), diagnostic: this.diagnostics.snapshot(), resourceSample: this.diagnostics.latestSample(), counters: [{ id: 'wan', scope: 'internet', epoch: String(this.demoEpoch), upload: (BigInt(seconds) * 1200000n).toString(), download: (BigInt(seconds) * 9000000n).toString() }, ...clients.filter(d => d.online).map((d, i) => ({ id: d.mac, scope: 'device' as const, epoch: String(this.demoEpoch), upload: (BigInt(seconds) * BigInt((i + 1) * 2000)).toString(), download: (BigInt(seconds) * BigInt((i + 1) * 30000)).toString() }))] };
       }
       const metadata = topology || !this.telemetryMetadataAt;
-      const data = await router.readModules(['wanStatus', 'deviceList', 'systemCfg', ...(metadata ? ['meshTopo', 'wifiBasicCfg', 'apModeStatus', 'workMode', 'localhost', 'macFilter', 'deviceVersionList'] : [])]);
+      const data = await router.readModules(['wanStatus', 'deviceList', 'systemCfg', ...(radio ? ['wifiAdvCfg'] : []), ...(metadata ? ['meshTopo', 'wifiBasicCfg', 'apModeStatus', 'workMode', 'localhost', 'macFilter', 'deviceVersionList'] : [])]);
       if (telemetrySession !== this.session) throw new AppError('AUTH', 'A sessão mudou durante a coleta.');
       const rateInput = z.union([z.number().finite().nonnegative(), z.string().regex(/^\d+(?:\.\d+)?$/)]).refine(v => Number(v) * 1024 <= 1e12);
       const wan = object(data.wanStatus); if (!rateInput.safeParse(wan.wanUpSpeed).success || !rateInput.safeParse(wan.wanDownSpeed).success) throw new AppError('ROUTER', 'O roteador retornou velocidades inválidas.');
@@ -107,9 +107,10 @@ export class AppService {
           this.diagnostics.passive(diagnostic.syschkInfo, overview.nodes.find(n => n.primary)?.id ?? '');
         } catch (error) { if (error instanceof Error && 'code' in error && error.code === 'AUTH') throw error; }
       }
+      if(radio){const advanced=object(data.wifiAdvCfg),field=(key:string)=>{const value=advanced[key];return typeof value==='string'&&/^[A-Za-z0-9+./_-]{1,16}$/.test(value)?value:null;};this.radios=([['2.4 GHz',''],['5 GHz','_5g'],['6 GHz','_6g']]as const).map(([band,suffix])=>({band,sampledAt:Date.now(),configuredChannel:field('wifiChannel'+suffix),currentChannel:field('wifiChannelCurrent'+suffix),configuredBandwidth:field('wifiBandwidth'+suffix),currentBandwidth:field('wifiBandwidthCurrent'+suffix)}));}
       this.telemetryResources = this.diagnostics.reading();
       this.telemetryRaw = raw; if (metadata) this.telemetryMetadataAt = Date.now();
-      return { overview, clients, nodes: overview.nodes, resources: this.telemetryResources, diagnostic: this.diagnostics.snapshot(), resourceSample: this.diagnostics.latestSample(), counters: [], routerId: hash({ primary: overview.nodes.find(n => n.primary)?.id ?? connection.host, model: connection.model, hardware: connection.hardware }) };
+      return { overview, clients, nodes: overview.nodes, radios:this.radios, resources: this.telemetryResources, diagnostic: this.diagnostics.snapshot(), resourceSample: this.diagnostics.latestSample(), counters: [], routerId: hash({ primary: overview.nodes.find(n => n.primary)?.id ?? connection.host, model: connection.model, hardware: connection.hardware }) };
     });
   }
   definitions() { this.requireConnection(); return this.featuresService.definitions(); }

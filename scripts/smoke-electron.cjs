@@ -2,10 +2,10 @@
 const {app,BrowserWindow,dialog,ipcMain}=require('electron');
 const fs=require('node:fs');const path=require('node:path');
 const output=path.resolve('artifacts');fs.mkdirSync(output,{recursive:true});
-const packagedAsar=process.argv.includes('--packaged-asar');
-const profile=path.join(output,packagedAsar?'smoke-asar-profile':'smoke-profile');fs.mkdirSync(profile,{recursive:true});app.setPath('userData',profile);
+const packagedAsar=process.argv.includes('--packaged-asar');const packagedVersion=process.argv.find(a=>/^--version=0\.[345]\.0$/.test(a))?.slice(10)??require('../package.json').version;
+const profile=path.join(output,packagedAsar?'smoke-asar-profile-'+packagedVersion:'smoke-profile');fs.mkdirSync(profile,{recursive:true});app.setPath('userData',profile);
 dialog.showSaveDialog=async(_window,options)=>({canceled:false,filePath:path.join(output,options.defaultPath)});
-const findings={errors:[],checks:[]};
+const findings={version:packagedVersion,errors:[],checks:[]};
 let historyCalls=0;const register=ipcMain.handle.bind(ipcMain);ipcMain.handle=(channel,handler)=>register(channel,async(...args)=>{if(channel==='tenda:monitoringHistory')historyCalls++;return handler(...args)});
 BrowserWindow.prototype.show=function(){};
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -21,7 +21,7 @@ app.on('browser-window-created',(_event,win)=>{
       await until(()=>evaluate(win,`Boolean(document.querySelector('.login-shell')) || document.body.innerText.includes('demonstração')`));
       await wait(150);await screenshot(win,'login');
       const safety=await evaluate(win,`({require:typeof window.require,node:typeof window.process,bridge:!!window.tenda,rawIPC:!!window.tenda?.invoke})`);
-      if(safety.require!=='undefined'||safety.node!=='undefined'||!safety.bridge||safety.rawIPC)throw Error('Renderer isolation failed');findings.checks.push('renderer isolation');
+      if(safety.require!=='undefined'||safety.node!=='undefined'||!safety.bridge||safety.rawIPC)throw Error('Renderer isolation failed');findings.checks.push('renderer isolation');const unauthorizedStartup=await evaluate(win,"window.tenda.desktopSetStartup({enabled:false})");if(unauthorizedStartup.ok||unauthorizedStartup.error.code!=='AUTH')throw Error('Startup modification accepted before authentication');findings.checks.push('startup authorization before login');
       const loginText=await evaluate(win,'document.body.innerText');
       const label=await evaluate(win,`Array.from(document.querySelectorAll('button')).find(e=>/demonstração/i.test(e.textContent))?.textContent.trim()`);
       if(!label)throw Error('Demo button missing: '+loginText.slice(0,300));await clickText(win,label);
@@ -44,6 +44,19 @@ app.on('browser-window-created',(_event,win)=>{
       await evaluate(win,`document.querySelector('[aria-label="Configurar monitoramento"]').click()`);await until(()=>evaluate(win,`!!document.querySelector('.monitor-settings')`));await screenshot(win,'monitor-settings');await clickText(win,'Cancelar');findings.checks.push('monitoring preferences');
       for(const label of ['Dispositivos','Qualidade','Recursos','Eventos']){await clickText(win,label,'.monitor-tabs button');await wait(200);await screenshot(win,'monitor-'+{'Dispositivos':'devices','Qualidade':'quality','Recursos':'resources','Eventos':'events'}[label]);}
       const resourceHistory=await evaluate(win,"window.tenda.monitoringHistory({period:'5m'})");if(!resourceHistory.ok||resourceHistory.data.resources?.length!==1)throw Error('Diagnostic sample missing or duplicated');findings.checks.push('one completed diagnostic resource sample');
+      const observation=await evaluate(win,"window.tenda.observationReport({range:'today'})");if(!observation.ok||BigInt(observation.data.totals.measuredDown)<=0n||observation.data.devices.length<5)throw Error('Observation volumes or inventory missing');
+      for(const kind of ['volumes','inventory','events']){const exported=await evaluate(win,`window.tenda.exportObservation({range:'today',kind:'${kind}'})`);if(!exported.ok||!exported.data.saved)throw Error('Observation export failed: '+kind);}findings.checks.push('calendar volume, inventory and event CSV exports');
+      const forgedDevice=await evaluate(win,"window.tenda.observationDevice({range:'today',deviceMac:'02:FF:FF:FF:FF:FF'})");if(forgedDevice.ok||forgedDevice.error.code!=='FORBIDDEN')throw Error('Historical device ownership failed');
+      await clickText(win,'Consumo','.monitor-tabs button');await until(()=>evaluate(win,"Boolean(document.querySelector('.volume-chart canvas'))"));await screenshot(win,'monitor-consumption');
+      await clickText(win,'Dispositivos','.monitor-tabs button');await until(()=>evaluate(win,"document.querySelectorAll('.inventory-ranking li').length>0"));await evaluate(win,"document.querySelector('.monitor-device-link').click()");await until(()=>evaluate(win,"!!document.querySelector('.device-drawer .inventory-details')"));await screenshot(win,'monitor-device-profile');await evaluate(win,"document.querySelector('[aria-label=\"Fechar perfil\"]').click()");findings.checks.push('calendar consumption, persistent inventory, detail drawer and ownership');
+      if(await evaluate(win,"typeof window.tenda.observationQuality === 'function'")){
+      await clickText(win,'Wi-Fi/Mesh','.monitor-tabs button');await until(()=>evaluate(win,"document.querySelectorAll('.wifi-mesh-grid').length>0"));await screenshot(win,'monitor-wifi-mesh');const quality=await evaluate(win,"window.tenda.observationQuality({range:'today'})");if(!quality.ok||quality.data.nodes.length!==4||quality.data.samples.filter(s=>s.kind==='dns').length<2)throw Error('WiFi Mesh quality history failed');findings.checks.push('radio channels, mesh node health and independent DNS history');
+      }
+      if(await evaluate(win,"typeof window.tenda.observationReports==='function'")){
+        findings.stage='widget customization';await clickText(win,'Vis\u00e3o geral','.monitor-tabs button');await until(()=>evaluate(win,"Array.from(document.querySelectorAll('button')).some(b=>b.textContent.trim()==='Personalizar widgets'&&!b.disabled)"));await clickText(win,'Personalizar widgets');await until(()=>evaluate(win,"!!document.querySelector('[role=dialog]')"));await evaluate(win,"document.querySelector('[aria-label=\"Mover Eventos recentes para cima\"]').click()");await clickText(win,'Salvar organiza\u00e7\u00e3o');await until(()=>evaluate(win,"!document.querySelector('[role=dialog]')"));const layout=await evaluate(win,"window.tenda.observationLayout()");if(!layout.ok||layout.data.order[3]!=='events')throw Error('Widget order was not persisted');
+        const badLayout=await evaluate(win,"window.tenda.saveObservationLayout({order:['summary','traffic','capacity','insights','events'],hidden:[],url:'https://evil.invalid'})");if(badLayout.ok||badLayout.error.code!=='VALIDATION')throw Error('Widget whitelist failed');
+        findings.stage='reports';await clickText(win,'Relat\u00f3rios','.monitor-tabs button');await until(()=>evaluate(win,"document.querySelectorAll('.heat-cell').length===168"));await screenshot(win,'monitor-reports');const intel=await evaluate(win,"window.tenda.observationIntelligence({range:'month'})");if(!intel.ok||intel.data.baseline.ready||intel.data.projection.monthlyBytes!==null)throw Error('Insufficient history was fabricated');findings.checks.push('reports, insufficient-history gates and persistent widget whitelist');
+      }
       const beforeClose=(await evaluate(win,'window.tenda.monitoringStatus()')).data.sampledAt;win.close();if(win.isDestroyed())throw Error('Close-to-tray failed');await wait(1200);const afterClose=(await evaluate(win,'window.tenda.monitoringStatus()')).data.sampledAt;if(afterClose<=beforeClose)throw Error('Background collection stopped');findings.checks.push('close to tray continues collection');
       await evaluate(win,'window.tenda.monitoringPause({paused:true})');const pausedAt=(await evaluate(win,'window.tenda.monitoringStatus()')).data.sampledAt;await wait(1200);if((await evaluate(win,'window.tenda.monitoringStatus()')).data.sampledAt!==pausedAt)throw Error('Paused collector made a new sample');await evaluate(win,'window.tenda.monitoringPause({paused:false})');findings.checks.push('monitor pause and resume');
       const features=await evaluate(win,'window.tenda.features()');if(!features.ok||features.data.length<28)throw Error('Feature catalog missing');
@@ -73,8 +86,8 @@ app.on('browser-window-created',(_event,win)=>{
       await clickText(win,'Encerrar sessão');await until(()=>evaluate(win,`!document.querySelector('.app-shell')`));findings.checks.push('logout');
       findings.success=true;
     }catch(error){findings.success=false;findings.failure=error.message;}
-    finally{fs.writeFileSync(path.join(output,'smoke.json'),JSON.stringify(findings,null,2));console.log(JSON.stringify(findings,null,2));app.exit(findings.success?0:1);}
+    finally{fs.writeFileSync(path.join(output,'smoke.json'),JSON.stringify(findings,null,2));fs.writeFileSync(path.join(output,'smoke-'+packagedVersion+(packagedAsar?'-asar':'')+'.json'),JSON.stringify(findings,null,2));console.log(JSON.stringify(findings,null,2));app.exit(findings.success?0:1);}
   });
 });
 setTimeout(()=>{findings.success=false;findings.failure='Smoke deadline exceeded';fs.writeFileSync(path.join(output,'smoke.json'),JSON.stringify(findings,null,2));app.exit(1);},60000).unref();
-require(packagedAsar?path.resolve('release/'+require('../package.json').version+'/win-unpacked/resources/app.asar/out/main.cjs'):'../out/main.cjs');
+require(packagedAsar?path.resolve('release/'+packagedVersion+'/win-unpacked/resources/app.asar/out/main.cjs'):'../out/main.cjs');

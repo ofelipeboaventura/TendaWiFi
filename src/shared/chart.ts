@@ -1,5 +1,5 @@
 import type { ChartSample, MonitoringPeriod } from './monitoring';
-export const chartPeriods: Record<MonitoringPeriod, number> = { '5m': 300000, '15m': 900000, '1h': 3600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
+export const chartPeriods: Record<MonitoringPeriod, number> = { '1m': 60000, '5m': 300000, '15m': 900000, '1h': 3600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
 
 /** Keep chronological extrema, not averages. A reduced partial bucket never bridges missing data. */
 export function reduceSamples(samples: readonly ChartSample[], buckets: number): ChartSample[] {

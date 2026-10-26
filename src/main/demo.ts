@@ -14,7 +14,7 @@ export class DemoRouter {
   private active = true; private diagnosticStarted = 0;
   private start = Date.now();
   private data: Record<string, unknown>;
-  private devices: ClientDevice[] = names.map((name, i) => ({ id: `02:00:00:00:50:${(i + 16).toString(16).toUpperCase()}`, mac: `02:00:00:00:50:${(i + 16).toString(16).toUpperCase()}`, name, ip: `192.168.50.${100 + i}`, nodeId: nodes[Math.min(Math.floor(i / 4), 2)].id, nodeName: nodes[Math.min(Math.floor(i / 4), 2)].name, online: i !== 8, guest: i === 7, blocked: i === 9, local: i === 0, connection: i === 0 ? 'Ethernet' : i % 2 ? '5 GHz' : '2.4 GHz', upload: (i + 1) * 2310, download: (i + 1) * 34000, uploadLimit: 0, downloadLimit: 0, uptime: 3200 + i * 100 }));
+  private devices: ClientDevice[] = names.map((name, i) => ({ id: `02:00:00:00:50:${(i + 16).toString(16).toUpperCase()}`, mac: `02:00:00:00:50:${(i + 16).toString(16).toUpperCase()}`, name, ip: `192.168.50.${100 + i}`, nodeId: nodes[Math.min(Math.floor(i / 4), 2)].id, nodeName: nodes[Math.min(Math.floor(i / 4), 2)].name, online: i !== 8, guest: i === 7, blocked: i === 9, local: i === 0, negotiatedMbps:i===0?1000:866,rssi:i===0?null:String(-40-i*3),connection: i === 0 ? 'Ethernet' : i % 2 ? '5 GHz' : '2.4 GHz', upload: (i + 1) * 2310, download: (i + 1) * 34000, uploadLimit: 0, downloadLimit: 0, uptime: 3200 + i * 100 }));
   readonly writes: string[] = [];
   constructor() {
     this.data = {

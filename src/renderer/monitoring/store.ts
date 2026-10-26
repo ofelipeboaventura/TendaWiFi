@@ -8,7 +8,7 @@ export function appendHistory(history: MonitoringHistory, frame: ChartFrame, que
   const short = chartPeriods[query.period] <= 900000, from = frame.at - chartPeriods[query.period];
   const points = history.points.filter(p => p.at >= from); let point: MonitorPoint | undefined = frame.point;
   if (point && query.deviceMac) { const device = frame.devices?.find(d => d.mac === query.deviceMac); point = device ? { ...point, upload: device.upload, download: device.download, online: device.online, cpu: null, memory: null, latency: null } : undefined; }
-  if (point && !points.some(p => p.at === point!.at)) points.push({ ...point, breakBefore: Boolean(point.breakBefore || points.length && point.at - points.at(-1)!.at > TRAFFIC_GAP_MS) });
+  if (point && !points.some(p => p.at === point!.at)) points.push({ ...point, breakBefore: point.breakBefore ?? Boolean(points.length && point.at - points.at(-1)!.at > TRAFFIC_GAP_MS) });
   const recent = points.filter(p => p.at >= frame.at - 900000).slice(-901), older = short ? [] : points.filter(p => p.at < frame.at - 900000).slice(-800);
   const latency = [...history.chart.latency, ...(frame.probes ?? []).filter(p => p.target === '1.1.1.1').map(p => ({ at: p.at, value: p.status === 'success' ? p.latency : null, breakBefore: Boolean(p.breakBefore) }))].filter(p => p.at >= from);
   const uniqueLatency = !frame.probes?.length && !(history.chart.latency[0]?.at < from) ? history.chart.latency : [...new Map(latency.map(p => [p.at, p])).values()].sort((a, b) => a.at - b.at).slice(-900);
@@ -34,6 +34,7 @@ export class MonitorClientStore {
   private state: MonitoringState | null = null;
   private listeners = new Set<() => void>(); private views = new Map<string, View>(); private frames: ChartFrame[] = [];
   getSnapshot = () => this.state;
+  framesAfter(watermark:{epoch:string;sequence:number}){return this.frames.filter(f=>f.epoch===watermark.epoch&&f.sequence>watermark.sequence); }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   notifyVisible() { for(const view of this.views.values())for(const listener of view.listeners)listener();for(const listener of this.listeners)listener(); }
   clear() { this.state = null; this.frames = []; for (const view of this.views.values()) { view.snapshot = null; for (const listener of view.listeners) listener(); } for (const listener of this.listeners) listener(); }

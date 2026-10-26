@@ -1,3 +1,4 @@
+import { version as appVersion } from '../../../package.json';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { ClientDevice, ConnectionStatus, MeshNode, Overview } from '../../shared/types';
@@ -132,7 +133,7 @@ export class RouterClient {
     if (authenticated) this.authenticated();
     this.lastRequestAt = Date.now();
     const loginRequest = path === '/login/Auth' || path.startsWith('/goform/loginInfo');
-    const headers: Record<string, string> = { Accept: 'application/json, text/plain, */*', 'Content-Type': contentType, 'X-Requested-With': 'XMLHttpRequest', 'User-Agent': 'TendaWiFiDesktop/0.2.2', Referer: `http://${host}/${loginRequest ? 'login' : 'index'}.html` };
+    const headers: Record<string, string> = { Accept: 'application/json, text/plain, */*', 'Content-Type': contentType, 'X-Requested-With': 'XMLHttpRequest', 'User-Agent': `TendaWiFiDesktop/${appVersion}`, Referer: `http://${host}/${loginRequest ? 'login' : 'index'}.html` };
     if (this.cookies.size) headers.Cookie = [...this.cookies].map(([name, value]) => `${name}=${value}`).join('; ');
     if (body) { headers['Content-Type'] = contentType; headers['Content-Length'] = String(body.length); headers.Origin = `http://${host}`; }
     let response: RouterResponse;

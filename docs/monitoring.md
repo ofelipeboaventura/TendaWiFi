@@ -1,8 +1,10 @@
-# Monitoramento — versão 0.2.2
+# Monitoramento — versão 0.5.0
+
+As versões 0.3.0/0.4.0/0.5.0 ampliam a base abaixo com estimativas identificadas, calendário, inventário, Wi-Fi/Mesh, DNS, relatórios e widgets. A especificação atual de origem dos dados, retenção e segurança está em [observability.md](observability.md). Totais novos não são reconstruídos a partir do histórico anterior.
 
 A versão 0.2.1 acrescenta Canvas com deslizamento contínuo, entrega incremental e critério unificado de continuidade. Consulte [gráficos, integridade e medições de desempenho](charts.md). Formato persistido, retenção e restrições de métricas permanecem compatíveis.
 
-O menu **Monitoramento** contém Visão geral, Dispositivos, Qualidade, Recursos e Eventos. Gráficos têm horários, unidades, exploração pelo mouse/teclado e lacunas explícitas. Os períodos são 5/15 minutos, 1/24 horas e 7/30 dias. CSV exporta a seleção, com cabeçalhos de unidade e horários UTC; gráficos longos podem ser agregados em até 800 pontos.
+O menu **Monitoramento** contém Visão geral, Consumo, Dispositivos, Qualidade, Wi-Fi/Mesh, Recursos, Eventos e Relatórios. Gráficos têm horários, unidades, exploração pelo mouse/teclado e lacunas explícitas. Os períodos de tráfego são 1/5/15 minutos, 1/24 horas e 7/30 dias; consumo usa períodos de calendário separados. CSV exporta a seleção, com cabeçalhos de unidade e horários UTC; gráficos longos podem ser agregados em até 800 pontos.
 
 ## Evidências e limites do RX27 Pro
 
@@ -12,25 +14,25 @@ Em 24/10/2026, uma inspeção autenticada somente de leitura confirmou quatro n�
 | --- | --- |
 | Velocidade WAN | `wanStatus.wanUpSpeed/wanDownSpeed`, unidade legada KB/s, normalizada para bytes/s; interface em Mbps. |
 | Velocidade por cliente | `deviceList[].onlineList/guestList[].upSpeed/downSpeed`; a interface identifica tráfego do dispositivo, sem assumir que exclui rede local. |
-| Consumo acumulado | Nenhum contador acumulado com semântica comprovada apareceu nos módulos inspecionados. O adaptador real retorna contadores indisponíveis. **Não existe integração das velocidades para estimar consumo.** |
+| Consumo acumulado | Nenhum contador acumulado comprovado apareceu nos módulos inspecionados. Desde a 0.3.0, velocidades podem gerar estimativas trapezoidais identificadas, somente entre leituras válidas. Contadores confirmados continuam prioritários; parcelas medidas e estimadas não são duplicadas e mantêm cobertura/escopo. |
 | CPU e memória | `syschkInfo.data[item_name=run_status].details.cpu_rate/mem_rate`, percentuais do roteador principal. Na 0.2.2, o diagnóstico `check/init` e `check/start` renova a medição a cada 5 minutos; consultas a cada 2 segundos acompanham a conclusão, com prazo de 120 segundos. Não utiliza `CLEAR_MODULE` nem `optimize`. Resultados antigos sem horário confirmado mantêm atualidade desconhecida. |
 | Uptime | `systemCfg.runTime`, segundos do roteador principal; uma redução indica possível reinicialização/reinício do contador. |
 | Mesh | Topologia, presença, identificação e distribuição dos clientes por nó. Não são inventadas métricas de CPU dos satélites. |
 | Qualidade | ICMP deste computador para o roteador selecionado, Cloudflare `1.1.1.1` e Google `8.8.8.8`. Não equivale a uma sonda executada dentro do roteador. |
 
-O motor de contadores aceita somente inteiros decimais uint64, preserva bytes como strings e calcula diferenças entre leituras válidas do mesmo contador/escopo/época. Reinício, redução, duplicação de identidade ou intervalo superior a 2,5 segundos interrompem a sequência. MACs são deduplicadas entre nós, preferindo a presença online; MACs diferentes não são mescladas por nome. Um futuro adaptador precisa comprovar unidade, direção, escopo e reinicialização antes de habilitar um contador. Campos desconhecidos chamados `total*` não são suficientes.
+O motor de contadores aceita somente inteiros decimais uint64, preserva bytes como strings e calcula diferenças entre leituras válidas do mesmo contador/escopo/época. Reinício, redução, duplicação de identidade ou intervalo superior a `max(3,5 segundos; 1,5 × intervalo configurado)` interrompem a sequência. MACs são deduplicadas entre nós, preferindo a presença online; duplicações ambíguas não geram volume. MACs diferentes não são mescladas por nome. Um futuro adaptador precisa comprovar unidade, direção, escopo e reinicialização antes de habilitar um contador. Campos desconhecidos chamados `total*` não são suficientes.
 
 A demonstração fica identificada em todas as telas, usa banco em memória, contadores e recursos sintéticos e não envia sondas nem notificações externas.
 
 ## Coleta e armazenamento
 
-- Um coletor no processo principal mantém tráfego em cadência-alvo de 1 segundo, metadados/topologia em 10 segundos e resultados passivos de recursos em 15 segundos. Respostas lentas não se sobrepõem. Falhas usam espera de 2/5/15 segundos. Sessão expirada interrompe a coleta e exige login; não há repetição automática de senha.
+- Um coletor no processo principal mantém tráfego em cadência-alvo de 1 segundo, configurável para 2/3/5 segundos, metadados/topologia em 10 segundos, Wi-Fi em 30 segundos e resultados passivos de recursos em 15 segundos. Respostas lentas não se sobrepõem. Falhas usam espera de 2/5/15 segundos. Sessão expirada interrompe a coleta e exige login; não há repetição automática de senha.
 - A interface recebe snapshots por evento tipado, sem consultas duplicadas de tráfego. A leitura explícita após aplicar configuração continua consultando o roteador para preservar a barreira de resultado incerto.
 - SQLite roda em worker separado. Cada roteador possui perfil derivado de sua identificação primária, modelo e hardware. O arquivo `monitoring.sqlite` e WAL ficam na pasta `userData` do Electron, sob o usuário Windows. A demonstração não mistura dados com esse arquivo.
 - Os últimos 15 minutos ficam detalhados em memória. No disco, velocidades são agregadas por minuto; sondas, recursos por diagnóstico e eventos mantêm seus horários. Histórico longo usa cache de até 30 segundos. Médias, picos, disponibilidade e cobertura representam somente amostras observadas.
-- A retenção é de 30 dias. O limite de 512 MiB considera banco, WAL e SHM; registros mais antigos são removidos se necessário, com aviso de redução da retenção. O tamanho mínimo estrutural do SQLite não pode ser reduzido indefinidamente.
+- Volumes têm retenção de 30 dias por minuto, 90 dias por hora e 24 meses por dia. Sondas e recursos detalhados mantêm 30 dias; inventário e eventos de nós/dispositivos têm regras descritas em [observability.md](observability.md). O limite de 512 MiB considera banco, WAL e SHM; detalhes antigos são removidos primeiro, com aviso de redução da retenção. O tamanho mínimo estrutural do SQLite não pode ser reduzido indefinidamente.
 - Escritas têm fila limitada. Disco cheio, corrupção ou worker ocupado não interrompem a coleta ao vivo; falhas aparecem como indisponibilidade do histórico, sem sucesso presumido. Migrações futuras desconhecidas são recusadas, preservando o arquivo.
-- Fechar a janela oculta o painel e mantém a bandeja. **Sair** grava as operações pendentes e encerra. Suspender o Windows interrompe sondas/coleta; retomar registra a lacuna. Não foi configurada inicialização automática do Windows.
+- Fechar a janela oculta o painel e mantém a bandeja. **Sair** grava as operações pendentes e encerra. Suspender o Windows interrompe sondas/coleta; retomar registra a lacuna. Inicialização com Windows é opcional e começa desativada; usa o portátil original e somente a conta conectada.
 - A opção de linha de comando `--hidden` inicia diretamente na bandeja, sem alterar a inicialização do Windows.
 
 ## Qualidade e alertas

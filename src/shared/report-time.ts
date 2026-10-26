@@ -1,0 +1,3 @@
+const format=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric',hourCycle:'h23'});
+export function civil(at:number){const values=Object.fromEntries(format.formatToParts(at).filter(p=>p.type!=='literal').map(p=>[p.type,Number(p.value)]));return{year:values.year,month:values.month,day:values.day,hour:values.hour,minute:values.minute,second:values.second};}
+export function localTime(year:number,month:number,day:number,hour=0,minute=0){const target=Date.UTC(year,month-1,day,hour,minute);let guess=target;for(let i=0;i<3;i++){const p=civil(guess);guess+=target-Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute,p.second);}return guess;}
