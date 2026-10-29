@@ -49,6 +49,10 @@ export class DemoRouter {
         const done = Date.now() - this.diagnosticStarted >= 4000;
         this.data.syschkInfo = {check_type:done?'checked':'checking',progress_rate:done?100:40,data:[{item_name:'run_status',item_status:done?'checked':'checking',result:done?'normal':'--',details:{cpu_rate:'24.5%',mem_rate:'53.2%'}}]};
         result[module] = clone(this.data.syschkInfo);
+      } else if (module === 'meshInfo') {
+        const index = nodes.findIndex(node => node.id === _params?.sn);
+        if (index < 0) throw new AppError('FORBIDDEN', 'Nó desconhecido na demonstração.');
+        const node = nodes[index]; result.meshInfo = { sn: node.id, nodeName: node.name, mac: `02:00:00:00:00:0${index + 1}`, ip: node.ip, nodeType: node.primary ? 'controller' : 'agent' };
       } else if (module === 'deviceList' || module === 'deviceListNotNeedRate') result.deviceList = nodes.map(n => ({ sn: n.id, nodeName: n.name, onlineList: this.devices.filter(d => d.nodeId === n.id && d.online).map(d => this.wireDevice(d)), offlineList: this.devices.filter(d => d.nodeId === n.id && !d.online).map(d => this.wireDevice(d)) }));
       else if (module in this.data) result[module] = clone(this.data[module]);
       else throw new AppError('UNSUPPORTED', 'Este recurso não está disponível na demonstração.');

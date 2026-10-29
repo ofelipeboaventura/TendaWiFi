@@ -1,0 +1,2 @@
+.node-detail-footer{flex-wrap:wrap}.node-detail-footer .btn{white-space:nowrap}.node-reboot-hint{margin:16px 0 0;padding:11px 13px;background:#47352144;border:1px solid #80634566;border-radius:7px;color:#dfbe94;font-size:11px;line-height:1.8}
+@media(max-width:640px){.node-detail-footer{justify-content:flex-start}.node-detail-footer .btn{flex:1 1 auto}}

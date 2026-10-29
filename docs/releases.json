@@ -1,5 +1,5 @@
 {
-  "latest": "0.5.2",
+  "latest": "0.5.3",
   "platform": "win32-x64",
   "releases": [
     {
@@ -48,6 +48,15 @@
       "directory": "release/0.5.2/publish",
       "bytes": 110625886,
       "sha256": "02a449031b8a12a790622739a31df44bd529b35c6a928bcf69d40fca940d9de0",
+      "signed": false
+    },
+    {
+      "version": "0.5.3",
+      "file": "TendaWiFi-0.5.3.exe",
+      "asset": "TendaWiFi-0.5.3-win-x64.exe",
+      "directory": "release/0.5.3/publish",
+      "bytes": 110584882,
+      "sha256": "6dbd47f0f0029517862790a7d38dc0b67f77b8e58918d93174ad30c92ababa78",
       "signed": false
     }
   ]

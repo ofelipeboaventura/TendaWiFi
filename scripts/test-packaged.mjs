@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
 import { build } from 'esbuild';
 if (!process.argv.includes('--read-only-live')) throw Error('Explicit --read-only-live is required.');
-const version=process.argv.find(a=>/^--version=0\.(?:[34]\.0|5\.[012])$/.test(a))?.slice(10)??JSON.parse(fs.readFileSync('package.json','utf8')).version;if(!/^\d+\.\d+\.\d+$/.test(version))throw Error('Invalid version');
+const version=process.argv.find(a=>/^--version=0\.(?:[34]\.0|5\.[0123])$/.test(a))?.slice(10)??JSON.parse(fs.readFileSync('package.json','utf8')).version;if(!/^\d+\.\d+\.\d+$/.test(version))throw Error('Invalid version');
 const executable = path.resolve('TendaWiFi-'+version+'.exe');
 if (!fs.existsSync(executable)) throw Error('Prepare the portable executable first.');
 await build({ stdin: { contents: "export {loadAutoLoginConfig} from './src/main/auto-login';", resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'cjs', outfile: 'artifacts/monitoring/packaged-config.cjs' });

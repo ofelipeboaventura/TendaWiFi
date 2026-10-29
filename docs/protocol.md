@@ -20,6 +20,7 @@ O cliente restringe o destino a um IPv4 RFC1918 literal. Não segue redirecionam
 | Internet | `wanStatus.connectCode` (`1` conectado), `wanUpSpeed`, `wanDownSpeed`, `wanIP`, `wanType` |
 | Wi-Fi | `wifiBasicCfg.wifiSSID`, `wifiSSID_5g`, `wifiSSID_6g`, `wifiCurStatus*`, `wifiEn*`, `doubleBand`, `tripleBand` |
 | Topologia | `meshTopo` é a raiz; cada nó usa `sn`, `nodeName`, `clientNum`, `connectStatus` e `childNode[]` |
+| Identidade do nó para manutenção | Consulta `meshInfo` com parâmetro `sn` do nó autenticado; resposta traz `sn`, `mac`, `ip` e `nodeType` (`controller`/`agent`). Esses dados não estão necessariamente em `meshTopo`/`deviceVersionList`. |
 | Clientes | `deviceList[]` por nó (`sn`, `nodeName`), com `onlineList`, `guestList`, `offlineList`; cada cliente usa `mac`, `hostname`, `ip`, `connectType`, `upSpeed`, `downSpeed`, `upLimit`, `downLimit`, `controlEn`, `connectTime` |
 | Bloqueio | `macFilter.macFilterEn`, `curFilterMode`, `blackList[]`; comparação de MAC sem diferença de caixa |
 
@@ -32,6 +33,13 @@ Renomeação/limites: `setDeviceInfo` recebe o registro do dispositivo com `host
 O método HTTP não determina se uma operação é somente leitura. `scanNodeList` com `action:"scan"` inicia busca Mesh por GET; os resultados são consultados com `action:"scanResult"`. O cliente oferece métodos separados para essas operações. `CLEAR_MODULE` e `SyncPPPoeAccount` não entram na lista de consultas comuns.
 
 - Reiniciar: `systemReboot:{action:"reboot"}`; para um satélite, o painel acrescenta `sn`, `mac` e `ip`.
+
+Na 0.5.3, a identidade vem da consulta de detalhe `meshInfo` com `sn`, como no `status.js` original (SHA-256 `2a0b0550e7a43599dc35da3121c60d74aeda699b543091d07da499d24af5f724`, trechos próximos dos offsets 27704, 34822 e 30800). A análise desses trechos foi estática, com ferramentas locais comuns; a skill REA orientou a investigação, sem instalar engines ou configurar MCP. A leitura real de 29/10/2026 confirmou o vínculo dos quatro nós, MACs válidos e IPs privados dos três satélites, mesmo com IP ausente no modelo resumido da topologia. Nenhum comando de reinicialização foi enviado nessa auditoria.
+
+O backend vincula a revisão a ID, MAC, IP do satélite e papel. Confere novamente ownership, presença online e identidade antes de enviar um único `systemReboot`; resposta de outro SN, MAC/IP inválidos ou mudança de identidade/papel bloqueiam o envio. A falta de `nodeId` nas chamadas legadas é resolvida para o principal durante a preparação e fica vinculada àquela identidade, sem retargeting posterior. A confirmação é de uso único e expira; timeout não provoca repetição automática. O destino HTTP continua sendo somente o controlador autenticado.
+
+### Outras operações
+
 - Restaurar padrão de fábrica: `systemReset:{action:"reset",sn?}`.
 - Otimizar: `meshOptimize:{action:"optimize"}`.
 - Adicionar nó: `addNode:<serial>` (string no código capturado).

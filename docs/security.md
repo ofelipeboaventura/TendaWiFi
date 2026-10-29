@@ -39,6 +39,10 @@ As versões 0.3–0.5 acrescentam consultas de calendário limitadas a 24 meses,
 
 ## Validação
 
+Na 0.5.3, reinicialização por nó reutiliza apenas `prepareAction`/`applyChange`. O renderer envia ação e ID; não pode fornecer MAC, IP, papel ou comando arbitrário. O backend confirma ownership e estado online, consulta `meshInfo` com o SN autenticado, exige resposta para o mesmo SN e valida MAC unicast, papel e IP privado do satélite. Guarda essa identidade na revisão e compara novamente antes de escrever. Campos ausentes/inválidos, troca de papel/endereço, revisão cancelada/expirada, sessão trocada ou alvo removido impedem o envio; o destino nunca é substituído pelo principal. Cliques concorrentes consomem a revisão uma vez. Um timeout de escrita mantém a barreira de resultado incerto e não dispara retry.
+
+O modal acompanha o estado atual do nó. Fechá-lo enquanto prepara uma revisão invalida o contexto local e cancela uma revisão que chegue tardiamente, sem abrir confirmação ou enviar reinicialização. O atalho Manutenção mantém o ID selecionado e não recai no principal se o nó desaparecer. A auditoria real usa credencial somente no backend e bloqueia todos os setters; seus resultados expõem somente estados/booleanos sanitizados. Os testes de escrita são sintéticos.
+
 Os testes usam senhas e respostas sintéticas. O simulador é um provedor em memória, sem conexão de rede. O teste desktop confirma isolamento, navegação, leitura do catálogo, revisão/cancelamento, whitelist IPC e ownership. Testes reais de escrita exigem um ambiente controlado e autorização específica; não são parte do desenvolvimento contra a rede de produção.
 
 

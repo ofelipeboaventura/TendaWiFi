@@ -9,6 +9,7 @@ import { DemoRouter } from './demo';
 import { FeatureService } from './features';
 import { AppError } from './errors';
 import type { FileStore } from './files';
+import { resolveRebootTarget, type RebootTarget } from './reboot-target';
 
 export type ManagedRouter = Pick<RouterClient, 'getConnection' | 'connect' | 'disconnect' | 'readModules' | 'writeModules' | 'overview' | 'clients' | 'mesh' | 'scanMesh' | 'readScanResults' | 'downloadConfig' | 'upload'>;
 const mac = z.string().regex(/^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/).transform(v => v.toUpperCase());
@@ -33,7 +34,7 @@ export const actionSchema = z.discriminatedUnion('action', [
 const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const clientIdentity = (client: ClientDevice) => ({ mac: client.mac, nodeId: client.nodeId, name: client.name, blocked: client.blocked, local: client.local, uploadLimit: client.uploadLimit, downloadLimit: client.downloadLimit });
-interface Pending { preview: ChangePreview; session: number; action?: ActionRequest; client?: ClientChange; revision?: string; filterRevision?: string }
+interface Pending { preview: ChangePreview; session: number; action?: ActionRequest; client?: ClientChange; revision?: string; filterRevision?: string; rebootTarget?: RebootTarget }
 const ACTION_TITLES: Record<ActionRequest['action'], string> = { reboot: 'Reiniciar roteador', reset: 'Restaurar configurações de fábrica', meshOptimize: 'Otimizar rede Mesh', meshScan: 'Procurar novos nós', meshAdd: 'Adicionar nó Mesh', checkFirmware: 'Verificar atualização', upgradeOnline: 'Atualizar firmware online', restore: 'Restaurar backup', firmware: 'Instalar firmware local', changePassword: 'Alterar senha de administração', clearLogs: 'Limpar registros' };
 
 export class AppService {
@@ -146,13 +147,15 @@ export class AppService {
     if (['reboot', 'reset', 'firmware'].includes(action.action) && (!chosen || !chosen.online)) throw new AppError('FORBIDDEN', 'Selecione um roteador online desta rede.');
     if (action.action === 'firmware' && !chosen?.primary) throw new AppError('UNSUPPORTED', 'O arquivo local verificado é exclusivo do RX27 Pro principal. Para os outros nós, utilize a atualização online.');
     if (action.action === 'upgradeOnline') await this.requireAvailableUpgrade(action.nodeId, router);
+    const rebootTarget = action.action === 'reboot' ? await resolveRebootTarget(router, chosen!) : undefined;
     const summary: string[] = [!targetId && ['checkFirmware', 'upgradeOnline'].includes(action.action) ? 'Destino: todos os nós da rede' : chosen && ['reboot', 'reset', 'firmware', 'checkFirmware', 'upgradeOnline'].includes(action.action) ? `Destino: ${chosen.name}` : 'Destino: rede atual'];
     if ('nodeSerial' in action) summary.push(`Número de série: ${action.nodeSerial}`);
+    if (rebootTarget) summary.push(`Identificação do nó: ${rebootTarget.id}`, `Papel: ${rebootTarget.primary ? 'Roteador principal' : 'Satélite Mesh'}`, ...(rebootTarget.mac ? [`MAC: ${rebootTarget.mac}`] : []), ...(rebootTarget.ip ? [`IP informado: ${rebootTarget.ip}`] : []));
     if ('fileId' in action) { const file = this.files.get(action.fileId); const expected = action.action === 'firmware' ? 'firmware' : 'configuration'; if (file.info.kind !== expected) throw new AppError('VALIDATION', 'O tipo do arquivo não corresponde à operação.'); summary.push(`Arquivo: ${file.info.name}`, `Tamanho: ${file.info.size.toLocaleString('pt-BR')} bytes`, `SHA-256: ${file.info.sha256}`); }
     if (action.action === 'changePassword') summary.push('A senha será substituída e será necessário entrar novamente.');
     const destructive = ['reset', 'restore'].includes(action.action); const disconnect = ['reboot', 'firmware', 'upgradeOnline', 'meshOptimize'].includes(action.action);
-    const warning = destructive ? 'As configurações atuais serão substituídas. A conexão poderá ser perdida. Faça um backup antes de continuar.' : disconnect ? 'A rede poderá ficar indisponível durante a operação. Não desligue os roteadores durante atualizações.' : action.action === 'meshAdd' ? 'O novo nó passará a integrar sua rede. Confira o número de série do equipamento.' : undefined;
-    return this.addPending(session, router, ACTION_TITLES[action.action], summary, destructive ? 'destructive' : disconnect ? 'disconnect' : action.action === 'changePassword' || action.action === 'meshAdd' ? 'security' : 'normal', { action }, warning);
+    const warning = rebootTarget ? rebootTarget.primary ? 'Reiniciar o roteador principal pode interromper temporariamente toda a rede. As configurações serão preservadas.' : 'Somente este nó receberá o comando. Seus clientes e os nós que dependem desse caminho podem perder conexão temporariamente. As configurações serão preservadas.' : destructive ? 'As configurações atuais serão substituídas. A conexão poderá ser perdida. Faça um backup antes de continuar.' : disconnect ? 'A rede poderá ficar indisponível durante a operação. Não desligue os roteadores durante atualizações.' : action.action === 'meshAdd' ? 'O novo nó passará a integrar sua rede. Confira o número de série do equipamento.' : undefined;
+    return this.addPending(session, router, ACTION_TITLES[action.action], summary, destructive ? 'destructive' : disconnect ? 'disconnect' : action.action === 'changePassword' || action.action === 'meshAdd' ? 'security' : 'normal', { action: rebootTarget ? { action: 'reboot', nodeId: rebootTarget.id } : action, ...(rebootTarget ? { rebootTarget } : {}) }, warning);
   }
   applyChange(input: { id: string }): Promise<ApplyResult> { return this.exclusive(async () => {
     this.requireWritable();
@@ -166,7 +169,7 @@ export class AppService {
       if (!pending || pending.session !== this.session || Date.parse(pending.preview.expiresAt) < Date.now()) throw new AppError('CONFLICT', 'A confirmação expirou ou já foi usada. Revise a alteração novamente.');
       let result: ApplyResult;
       if (pending.client) result = await this.applyClient(pending);
-      else result = await this.applyAction(pending.action!);
+      else result = await this.applyAction(pending.action!, pending.rebootTarget);
       this.audit(pending.preview.title, 'Solicitação aceita');
       if (result.reconnect) { await this.router.disconnect(); this.invalidate(); }
       return result;
@@ -205,12 +208,18 @@ export class AppService {
     if (!after || (change.name !== undefined && after.name !== change.name) || (change.blocked !== undefined && after.blocked !== change.blocked) || (change.uploadLimit !== undefined && after.uploadLimit !== change.uploadLimit) || (change.downloadLimit !== undefined && after.downloadLimit !== change.downloadLimit)) throw new AppError('UNCERTAIN', 'O roteador recebeu a solicitação, mas o estado final ainda não foi confirmado. Atualize a lista antes de repetir.');
     return { message: 'Dispositivo atualizado e estado confirmado.', reconnect: false };
   }
-  private async applyAction(action: ActionRequest): Promise<ApplyResult> {
+  private async applyAction(action: ActionRequest, reviewedReboot?: RebootTarget): Promise<ApplyResult> {
     const nodes = await this.router.mesh(); const targetId = 'nodeId' in action ? action.nodeId : undefined; const node = targetId ? nodes.find(n => n.id === targetId) : nodes.find(n => n.primary);
     if (targetId && !node) throw new AppError('FORBIDDEN', 'O nó não pertence mais à rede atual.');
     if (['reboot', 'reset', 'firmware'].includes(action.action) && !node?.online) throw new AppError('CONFLICT', 'O nó não está mais online. Revise a operação.');
     switch (action.action) {
-      case 'reboot': await this.router.writeModules({ systemReboot: node!.primary ? { action: 'reboot' } : { action: 'reboot', sn: node!.id, ip: node!.ip, mac: await this.nodeMac(node!.id) } }); return { message: 'Reinicialização solicitada. Aguarde o roteador voltar à rede.', reconnect: node!.primary };
+      case 'reboot': {
+        if (!reviewedReboot || action.nodeId !== reviewedReboot.id) throw new AppError('CONFLICT', 'O destino da revisão não está mais disponível. Revise a reinicialização novamente.');
+        const current = await resolveRebootTarget(this.router, node!);
+        if (hash(current) !== hash(reviewedReboot)) throw new AppError('CONFLICT', 'A identificação ou o papel do nó mudou. Revise a reinicialização novamente.');
+        await this.router.writeModules({ systemReboot: current.primary ? { action: 'reboot' } : { action: 'reboot', sn: current.id, ip: current.ip!, mac: current.mac! } });
+        return { message: `Reinicialização solicitada ao nó ${node!.name}. Aguarde o equipamento voltar à rede.`, reconnect: current.primary };
+      }
       case 'reset': await this.router.writeModules({ systemReset: node!.primary ? { action: 'reset' } : { action: 'reset', sn: node!.id } }); return { message: 'Restauração de fábrica solicitada. O equipamento precisará ser reconfigurado.', reconnect: node!.primary };
       case 'meshOptimize': await this.router.writeModules({ meshOptimize: { action: 'optimize' } }); return { message: 'Otimização Mesh iniciada. As conexões podem oscilar.', reconnect: false };
       case 'meshScan': await this.router.scanMesh(); this.scannedAt = Date.now(); return { message: 'Busca de nós iniciada. Aguarde cerca de 15 segundos; os resultados aparecerão na manutenção.', reconnect: false };
@@ -232,12 +241,6 @@ export class AppService {
   private async requireAvailableUpgrade(id?: string, router: ManagedRouter = this.router) {
     const data = await router.readModules(['deviceVersionList']); const rows = Array.isArray(data.deviceVersionList) ? data.deviceVersionList.map(object).filter(r => !id || r.sn === id) : [];
     if (!rows.some(r => object(r.versionInfo).hasNewSoftVersion === true && r.nodeStatus === 'normal')) throw new AppError('UNSUPPORTED', 'Não há atualização disponível confirmada para o destino. Verifique as versões antes de continuar.');
-  }
-  private async nodeMac(id: string): Promise<string> {
-    const data = await this.router.readModules(['meshTopo', 'deviceVersionList']);
-    const visit = (raw: unknown, depth: number): string | undefined => { if (depth > 16) return; const r = object(raw); if (r.sn === id && mac.safeParse(r.mac).success) return mac.parse(r.mac); const children = Array.isArray(r.childNode) ? r.childNode : []; for (const c of children) { const found = visit(c, depth + 1); if (found) return found; } };
-    for (const root of Array.isArray(data.meshTopo) ? data.meshTopo : [data.meshTopo]) { const found = visit(root, 0); if (found) return found; }
-    const list = z.array(z.record(z.string(), z.unknown())).max(64).parse(data.deviceVersionList); const row = list.find(r => r.sn === id); if (row && mac.safeParse(row.mac).success) return mac.parse(row.mac); throw new AppError('UNSUPPORTED', 'O roteador não informou o endereço necessário para reiniciar este nó.');
   }
   async maintenanceStatus(): Promise<MaintenanceStatus> {
     this.requireConnection(); const data = this.telemetryMetadataAt && Date.now() - this.telemetryMetadataAt < 10000 ? this.telemetryRaw : await this.router.readModules(['deviceVersionList']); const rows = Array.isArray(data.deviceVersionList) ? data.deviceVersionList.slice(0, 64) : [];
